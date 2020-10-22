@@ -1,0 +1,64 @@
+\documentclass{article}
+
+\usepackage{hyperref}
+\usepackage{amsmath}
+\begin{document}
+
+\subsubsection{Sparse-Estimation}
+% Following \url{https://en.wikipedia.org/wiki/Forward%E2%80%93backward_algorithm}
+  \begin{align*}
+    T_{ij} &= P(S_{t+1}=j |S_t=i)\\
+    O_j &= \text{diag}(P(X_t=j | S_t=0), P(X_t=j | S_t=1))\\
+    f(t) &= f(t)\left[TO_{o(t)}\right]^{L(t)}\\
+    f(t) &= \hat{f}(\tau_{t+1}-1)= P(\hat{o}_1,\hat{o}_2,,,\hat{o}_{\tau_{t+1}-1},\hat{X}_{\tau_{t+1}-1}|\pi_0)\\
+    b(t) &= \hat{b}(\tau_{\tau_{t+1}}-1) = P(\hat{o}_{\tau_{t+1}},\hat{o}_{\tau_{t+1}+1},,,\hat{o}_{\hat{N}},\hat{X}_{\tau_{t+1}-1}|\pi_0)\\
+    b(t-1) &= \left[TO_t\right]^{L(t)}b(t)\\
+  \end{align*}
+  
+  \subsubsection{Xi-sum}
+  \begin{align*}
+    \hat{\xi}_{ij}(\tau-1) &= \hat{f}_{i}(\tau-1)T_{ij}O_{\hat{o}(\tau), jj}\hat{b}_j(\tau)\\
+    \hat{\xi}(\tau-1) &= T_{ij} \circ (\hat{b}(\tau)\hat{f-1}(\tau))^TO_{\hat{o}(\tau)}\\
+    \sum_{\tau=1}^{\hat{N}-1} \xi_\tau &= \sum_{\tau=1}^{\hat{N}-1} T_{ij} \circ (\hat{b}(\tau)\hat{f}(\tau-1))^TO_{\hat{o}(\tau)}\\
+    &= T_{ij} \circ \sum_{\tau=1}^{\hat{N}-1} (\hat{b}(\tau)\hat{f}(\tau-1))^TO_{\hat{o}(\tau)}\\
+    &= T_{ij} \circ \sum_{k=0}^{N-1} \sum_{\tau=t_k}^{t_{k+1}-1} (\hat{b}(\tau)\hat{f}(\tau-1))^TO_{\hat{o}(\tau)}\\
+    &= T_{ij} \circ \sum_{k=0}^{N-1} \left[\sum_{\tau=t_k}^{t_{k+1}-1} (\hat{b}(\tau)\hat{f}(\tau-1))^T\right]O_{o(t_k)}\\
+    &= T_{ij} \circ \sum_{k=0}^{N-1} \left[\sum_{\tau=t_k}^{t_{k+1}-1} (M_{k}^{t_{k+1}-1-\tau}\hat{b}(t_{k+1}-1)\hat{f}(t_k-1)M_k^{\tau-t_k})^T\right]O_{o(t_k)}\\
+    &= T_{ij} \circ \sum_{k=0}^{N-1} \left[\sum_{t=0}^{L(k)-1} (M_{k}^{L(k)-1-t}b(k)f(k-1)M_k^{t})^T\right]O_{o(k)}\\
+  \end{align*}
+  \subsubsection{Update}
+  \begin{align*}
+    \hat{\gamma}(\tau) &= \hat{f}_{\tau} \circ \hat{b}_{\tau}^T/(\hat{f}_{\tau}\hat{b}_{\tau})\\
+    \hat{\Gamma^\circ} &= \text{diagonal}{\hat\Gamma}\\
+&= \sum_\tau \hat{f}_{\tau} \circ \hat{b}_{\tau}^T/(\hat{f}_{\tau}\hat{b}_{\tau})\\
+    \hat{\Gamma} &= K \sum_\tau \hat{b}_{\tau}\hat{f}_{\tau}\\
+    &= K \sum_t \sum_{n<L(t)} \hat{b}_{\tau_t+n} \hat{f}_{\tau_t+n}\\
+    &= K\sum_t \sum_{n<L(t)}  \hat{b}_{\tau_t+n}\hat{f}_{\tau_t+n}\\
+    &= K\sum_t \sum_{n<L(t)} \left[TO_{o(t)}\right]^{L(t)-(n+1)}b(t)f(t-1)\left[TO_{o(t)}\right]^{n+1}\\
+    &= K\sum_t \gamma(t)\\
+  \end{align*}
+  \begin{align*}
+   \gamma(t) &= \sum_{n<L(t)} \left[TO_{o(t)}\right]^{L(t)-(n+1)}b(t)f(t-1)\left[TO_{o(t)}\right]^{n+1}\\
+   TO_{o(t)} &= P_{o(t)}D_{o(t)}P_{o(t)}^{-1}\\
+   A(t) &= P_{o(t)}^{-1}b(t)f(t-1)P_{o(t)}\\
+   \gamma(t) &= \sum_{n<L_t}P_{o(t)}D_{o(t)}^{L_t-(n+1)}A(t)D_{o(t)}^{n+1}P_{o(t)}^{-1}\\
+   \gamma(t) &= P_{o(t)}\sum_{n<L_t}\left[D_{o(t)}^{L_t-(n+1)}A(t)D_{o(t)}^{n+1}\right]P_{o(t)}^{-1}\\
+  &= P\sum_{n<L} \left[ \begin{pmatrix} d_1^{L-(n+1)} &0\\ 0 & d_2^{L-(n+1)}\\ \end{pmatrix} A \begin{pmatrix} d_1^{n+1} &0\\ 0 & d_2^{n+1}\\ \end{pmatrix}\right]P^{-1}\\
+  &= P\sum_{n<L} \left[ \begin{pmatrix} d_1^L & d_1^{L-n-1}d_2^{n+1}\\ d_2^{L-n-1}d_1^{n+1} & d_2^L\\ \end{pmatrix} \circ A \right]P^{-1}\\
+  &= P\sum_{n<L} \left[ \begin{pmatrix} d_1^L & d_1^L(d_2/d_1)^{n+1}\\ d_2^L(d_1/d_2)^{n+1} & d_2^L\\ \end{pmatrix} \circ A \right]P^{-1}\\
+  &= P\left[ \begin{pmatrix} Ld_1^L & (d_2/d_1)\frac{d_1^{L+1}-d_2^{L+1}}{d_1-d_2}\\ (d_1/d_2)\frac{d_1^{L+1}
+         -d_2^{L+1}}{d_1-d_2} & L d_2^L\\ \end{pmatrix} \circ A \right]P^{-1}\\ 
+  \end{align*}
+% L+1 prob not right
+  \begin{align*}
+  \gamma(t) &= \sum_{n<L_t}(TO_{o(t)})^{L_t-n}b_{t+1}f_t(TO_{o(t)})^n\\
+  \gamma(t) &= \sum_{n<L_t}P_{o(t)}D_{o(t)}^{L_t-n}P_{o(t)}^{-1}b_{t+1}P_{o(t)}D_{o(t)}^{n}P_{o(t)}^{-1}\\
+  &= P\sum_{n<L_t}\left[D^{L_t-n}AD^{n}\right]P^{-1}\\
+  &= P\sum_{n<L} \left[ \begin{pmatrix} d_1^{L-n} &0\\ 0 & d_2^{L-n}\\ \end{pmatrix} A \begin{pmatrix} d_1^n &0\\ 0 & d_2^n\\ \end{pmatrix}\right]P^{-1}\\
+  &= P\sum_{n<L} \left[ \begin{pmatrix} d_1^L & d_1^{L-n}d_2^n\\ d_2^{L-n}d_1^n & d_2^L\\ \end{pmatrix} \circ A \right]P^{-1}\\
+  &= P\sum_{n<L} \left[ \begin{pmatrix} d_1^L & d_1^L(d_2/d_1)^n\\ d_2^L(d_1/d_2)^n & d_2^L\\ \end{pmatrix} \circ A \right]P^{-1}\\
+  &= P\left[ \begin{pmatrix} (L+1)d_1^L & d_1^L\frac{1-(d_2/d_1)^{L+1}}{1-d_2/d_1}\\ d_2^L\frac{1-(d_1/d_2)^{L+1}}{1-d_1/d_2} & (L+1) d_2^L\\ \end{pmatrix} \circ A \right]P^{-1}\\
+  &= P\left[ \begin{pmatrix} (L+1)d_1^L & \frac{d_1^{L+1}-d_2^{L+1}}{d_1-d_2}\\ \frac{d_1^{L+1}
+        -d_2^{L+1}}{d_1-d_2} & (L+1) d_2^L\\ \end{pmatrix} \circ A \right]P^{-1}\\
+\end{align*}
+\end{document}
