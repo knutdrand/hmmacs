@@ -15,8 +15,9 @@ def run_controlled(t_bedgraphs, c_bedgraphs, model):
     X = np.hstack((X_t.reshape((-1, 1)), X_c.reshape((-1, 1))))
     model.fit(X, lengths_t)
     states = model.predict(X, lengths_t)
-    probs = model.predict_proba(X, lengths_t)
-    return to_regions(states, np.log(probs), lengths_t, chroms_t)
+    # probs = model.predict_proba(X, lengths_t)
+    probs = model._compute_log_likelihood(X)
+    return to_regions(states, probs, lengths_t, chroms_t)
 
 def from_bedgraphs(bedgraphs):
     chroms = []
@@ -38,6 +39,7 @@ def to_regions(states, log_probs, lengths, chroms):
     start = 0
     regions = {}
     scores = {}
+    peaks = {}
     log_probs = log_probs[:, 1]-log_probs[:, 0]
     # cumulative_log_probs = np.insert(np.cumsum(log_probs), 0, 0)
     for chrom, length in zip(chroms, lengths):
@@ -51,5 +53,7 @@ def to_regions(states, log_probs, lengths, chroms):
         changes = changes.reshape((-1, 2))
         regions[chrom] = Regions(changes[:, 0], changes[:, 1])
         scores[chrom] = [np.max(local_probs[start:end]) for start, end in zip(changes[:, 0], changes[:, 1])]
+        peaks[chrom] = [np.mean(np.flatnonzero(local_probs[start:end]==m)).astype(int) for start, end, m in zip(changes[:, 0], changes[:, 1], scores[chrom])]
+        # np.argmax(local_probs[start:end]) for start, end in zip(changes[:, 0], changes[:, 1])]
         # cumulative_log_probs[changes[:, 1]]-cumulative_log_probs[changes[:, 0]]
-    return regions, scores
+    return regions, scores, peaks
