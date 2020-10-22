@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from hmmacs.sparse.estimation import diagonal_sum, sum_range, xi_sum
+from hmmacs.sparse.estimation import diagonal_sum, sum_range, xi_sum, log_diagonal_sum
 from hmmacs.sparse.sparsebase import diagonalize
 from hmmacs.dense.xisum import xi_sum as dense_xi_sum
 from .fixtures import *
@@ -54,4 +54,6 @@ def test_xi_sum(model, dense_model):
 def test_log_diagonal_sum(d, A):
     true = diagonal_sum(d, A, l)
     logged = log_diagonal_sum(np.log(np.abs(d)), np.log(A), l, np.sign(d))
+    print(true)
+    print(np.exp(logged))
     assert np.allclose(np.exp(logged), true)

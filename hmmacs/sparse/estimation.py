@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.linalg import matrix_power as mpow
-
+from scipy.special import logsumexp
 def diagonalize(matrices):
     l, p = np.linalg.eig(matrices)
     return p, l, np.linalg.inv(p)
@@ -21,8 +21,14 @@ def log_diagonal_sum(d, A, l, sd):
     """
     l = int(l)
     d1, d2 = d
-    dij = logsumexp([d1*l, d2*l], b=[sd[0], -sd[1]])-logsumexp((d1, d2), b=sd[0], -sd[1])
-    return np.array([[np.log(l)+l*d1, dij],
+    print(l, d1, d2, sd)
+    print(np.log(np.sum([sd[0], -sd[1]]*np.exp([d1, d2]))))
+    numerator, s = logsumexp([d1*l, d2*l], b=[sd[0], -sd[1]], return_sign=True)
+    denomenator, s2 = logsumexp((d1, d2), b=[sd[0], -sd[1]], return_sign=True)
+    assert s*s2==1, (s, s2)
+    dij = numerator-denomenator
+    print(numerator, denomenator, dij)
+    return np.array([[np.log(l)+(l-1)*d1, dij],
                      [dij, np.log(l)+d2*(l-1)]])+A
 
 
