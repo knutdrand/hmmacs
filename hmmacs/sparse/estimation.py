@@ -10,12 +10,21 @@ def diagonal_sum(d, A, l):
     sum_{0<=t<l}D^{l-t-1}AD^t
     """
     l = int(l)
-    assert d.shape == (2, )
-    assert A.shape == (2, 2)
     d1, d2 = d
     dij = (d1**(l)-d2**(l))/(d1-d2)
     return np.array([[l*d1**(l-1), dij],
                      [dij, l*d2**(l-1)]])*A
+
+def log_diagonal_sum(d, A, l, sd):
+    """
+    logsumexp_{0<=t<l}D^{l-t-1}AD^t
+    """
+    l = int(l)
+    d1, d2 = d
+    dij = logsumexp([d1*l, d2*l], b=[sd[0], -sd[1]])-logsumexp((d1, d2), b=sd[0], -sd[1])
+    return np.array([[np.log(l)+l*d1, dij],
+                     [dij, np.log(l)+d2*(l-1)]])+A
+
 
 def sum_range(pdp, b, f, l):
     """
@@ -26,30 +35,13 @@ def sum_range(pdp, b, f, l):
     b = b.reshape((2, 1))
     f = f.reshape((1, 2))
     p, d, r = pdp
-    assert p.shape == (2, 2)
-    assert d.shape == (2,)
-    assert r.shape == (2, 2)
     A = r @ b @ f @ p
-    assert A.shape == (2, 2)
     S = diagonal_sum(d, A, l)
-    assert S.shape == (2, 2), (S.shape, (2, 2))
     return (p @ S @ r)
 
-def simple_xi_sum(fs, T, bs, os, ls):
-    prob = sum(fs[-1])
-    M = ps[0] @ np.diag(ds[0]*ls[0]) @ rs[0]
-    M_inv = np.linalg.inv(M)
-    first_f = fs[0][None, :] @ M_inv
-    fs = np.vstack((first_f, fs))
-    local_sums = [T*o[None, :]*sum_range((p, d, r), b, f, l).T/prob
-                  for p, d, r, b, f, o, l in zip(ps, ds, rs, bs, fs, os, ls)]
-
-def handle_first(f, pdp, b, o, l):
-    if l == 1:
-        return 0
-    
 
 def compute_log_xi_sum():
+    
     pass
 
 def xi_sum(fs, T, bs, os, ls):

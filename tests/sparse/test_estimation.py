@@ -50,3 +50,8 @@ def test_xi_sum(model, dense_model):
     print(sparse_xi)
     print(dense_xi)
     assert np.allclose(sparse_xi, dense_xi)
+
+def test_log_diagonal_sum(d, A):
+    true = diagonal_sum(d, A, l)
+    logged = log_diagonal_sum(np.log(np.abs(d)), np.log(A), l, np.sign(d))
+    assert np.allclose(np.exp(logged), true)
