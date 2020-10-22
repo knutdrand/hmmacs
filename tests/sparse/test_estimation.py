@@ -1,7 +1,9 @@
 import pytest
 import numpy as np
-from hmmacs.sparse.estimation import diagonal_sum, sum_range
+from hmmacs.sparse.estimation import diagonal_sum, sum_range, xi_sum
 from hmmacs.sparse.sparsebase import diagonalize
+from hmmacs.dense.xisum import xi_sum as dense_xi_sum
+from .fixtures import *
 
 @pytest.fixture
 def d():
@@ -32,4 +34,19 @@ def test_sum_range(d, A, f, b):
     pdp = diagonalize(A)
     assert np.allclose(sum_range(pdp, b, f, l), true)
     
+def test_xi_sum(model, dense_model):
+    X = np.array([5, 6])[:, None]
+    lengths = np.array([1, 1])[:, None]
+    dense_X = get_dense_X(X, lengths)
+    dense_os = dense_model._compute_log_likelihood(dense_X)
+    sparse_os = dense_model._compute_log_likelihood(X)
+    dense_fs = np.exp(dense_model._do_forward_pass(dense_os)[1])
+    dense_bs = np.exp(dense_model._do_backward_pass(dense_os))
+    dense_xi = dense_xi_sum(dense_fs, dense_model.transmat_, dense_bs, np.exp(dense_os))
 
+    sparse_fs = np.exp(model._do_forward_pass(sparse_os, lengths)[1])
+    sparse_bs = np.exp(model._do_backward_pass(sparse_os, lengths))
+    sparse_xi = xi_sum(sparse_fs, model.transmat_, sparse_bs, np.exp(sparse_os), lengths)
+    print(sparse_xi)
+    print(dense_xi)
+    assert np.allclose(sparse_xi, dense_xi)

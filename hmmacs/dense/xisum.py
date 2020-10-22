@@ -38,5 +38,9 @@ def xi_sum_simple(fs, T, bs, os):
                 
 def xi_sum(fs, T, bs, os):
     prob = sum(fs[-1])
-    xis = [T*(b[:, None]@f[None, :]).T*o[None, :]/prob for f, b, o in zip(fs, bs[1:], os[1:])]
-    return np.sum(xis, axis=0)
+    xis = [(b[:, None]@f[None, :]).T*o[None, :] for f, b, o in zip(fs, bs[1:], os[1:])]
+    print("DENSE")
+    for x in xis:
+        print(x)
+    print("- DENSE")
+    return T*np.sum(xis, axis=0)/prob

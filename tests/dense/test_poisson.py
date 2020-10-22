@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from hmmcaller.dense.poissonhmm import PoissonHMM
+from hmmacs.dense.poissonhmm import PoissonHMM
 
 @pytest.fixture
 def model():
