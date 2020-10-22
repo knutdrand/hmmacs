@@ -44,24 +44,31 @@ def simple_xi_sum(fs, T, bs, os, ls):
     local_sums = [T*o[None, :]*sum_range((p, d, r), b, f, l).T/prob
                   for p, d, r, b, f, o, l in zip(ps, ds, rs, bs, fs, os, ls)]
 
+def handle_first(f, pdp, b, o, l):
+    if l == 1:
+        return 0
+    
+
+def compute_log_xi_sum():
+    pass
+
 def xi_sum(fs, T, bs, os, ls):
     ls = ls.copy()
+    ls[0]-=1
+
     matrices = T[None, ...] * os[:, None, : ]
     pdps = diagonalize(matrices)
     ps, ds, rs = pdps
     prob = sum(fs[-1])
-    M = ps[0] @ np.diag(ds[0]*ls[0]) @ rs[0]
-    ls[0]-=1
-    M_inv = np.linalg.inv(M)
-    first_f = fs[0][None, :] @ M_inv
+    if ls[0]>0:
+        M = ps[0] @ np.diag(ds[0]*ls[0]) @ rs[0]
+        M_inv = np.linalg.inv(M)
+        first_f = fs[0][None, :] @ M_inv
+    else:
+        first_f = fs[0][None, :] # DOESNT-MATTER WHAT 
     fs = np.vstack((first_f, fs))
     local_sums = [T*o[None, :]*sum_range((p, d, r), b, f, l).T/prob
                   for p, d, r, b, f, o, l in zip(ps, ds, rs, bs, fs, os, ls)]
-    print("-----------")
-    for l in local_sums:
-        print("+++")
-        print(l)
-    print("-----------")
     return np.sum(local_sums, axis=0)
 
 
