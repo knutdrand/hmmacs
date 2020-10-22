@@ -48,3 +48,14 @@ def test_forward_pass(X, lengths, model, dense_model):
         print(t)
 
     assert np.allclose(sparse, true[ts])
+
+
+def test_backward_pass(X, lengths, model, dense_model):
+    dense_X = get_dense_X(X, lengths)
+    true = dense_model._do_backward_pass(dense_model._compute_log_likelihood(dense_X))
+    ts = np.cumsum(lengths)-1
+    sparse = model._do_backward_pass(model._compute_log_likelihood(X), lengths)
+    for t in zip(true[ts], sparse, X, lengths):
+        print(t)
+
+    assert np.allclose(sparse, true[ts])
