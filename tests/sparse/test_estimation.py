@@ -35,8 +35,8 @@ def test_sum_range(d, A, f, b):
     assert np.allclose(sum_range(pdp, b, f, l), true)
     
 def test_xi_sum(model, dense_model):
-    X = np.array([5, 6])[:, None]
-    lengths = np.array([1, 1])[:, None]
+    X = np.array([5, 6, 8])[:, None]
+    lengths = np.array([1, 1, 2])[:, None]
     dense_X = get_dense_X(X, lengths)
     dense_os = dense_model._compute_log_likelihood(dense_X)
     sparse_os = dense_model._compute_log_likelihood(X)
