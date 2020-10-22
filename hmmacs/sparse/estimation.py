@@ -21,13 +21,10 @@ def log_diagonal_sum(d, A, l, sd):
     """
     l = int(l)
     d1, d2 = d
-    print(l, d1, d2, sd)
-    print(np.log(np.sum([sd[0], -sd[1]]*np.exp([d1, d2]))))
     numerator, s = logsumexp([d1*l, d2*l], b=[sd[0], -sd[1]], return_sign=True)
     denomenator, s2 = logsumexp((d1, d2), b=[sd[0], -sd[1]], return_sign=True)
     assert s*s2==1, (s, s2)
     dij = numerator-denomenator
-    print(numerator, denomenator, dij)
     return np.array([[np.log(l)+(l-1)*d1, dij],
                      [dij, np.log(l)+d2*(l-1)]])+A
 
@@ -45,6 +42,27 @@ def sum_range(pdp, b, f, l):
     S = diagonal_sum(d, A, l)
     return (p @ S @ r)
 
+def log_mat_mul(A, B, sA, sB):
+    print(A, B, sA, sB)
+    res = np.empty((A.shape[0], B.shape[1]))
+    sres = np.empty((A.shape[0], B.shape[1]))
+    for i in range(res.shape[0]):
+        for j in range(res.shape[1]):
+            res[i, j], sres[i, j] = logsumexp([A[i, k]+B[k, j] for k in range(A.shape[1])],
+                                              b=[sA[i, k]*sB[k, j] for k in range(A.shape[1])], return_sign=True)
+    return res, sres
+
+def log_sum_range(pdp, b, f, l, sign_pdp):
+    b = b.reshape((2, 1))
+    f = f.reshape((1, 2))
+    p, d, r = pdp
+    sp, sd, sr = sign_pdp
+    tmp_a, s_tmp_a = log_mat_mul(r, b, sr, np.ones_like(b))
+    tmp_b, s_tmp_b = log_mat_mul(f, p, np.ones_like(f), sp)
+    A, sA = log_mat_mul(tmp_a, tmp_b, s_tmp_a, s_tmp_b)
+    S = log_diagonal_sum(d, A, l, sd)
+    tmp_c, s_tmp_c = log_mat_mul(p, S, sp, sA)
+    return log_mat_mul(tmp_c, r, s_tmp_c, sr)[0]
 
 def compute_log_xi_sum():
     
