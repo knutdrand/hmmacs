@@ -100,3 +100,16 @@ def test_xi_sum_full(model, dense_model, X, lengths):
     print(sparse_xi)
     print(dense_xi)
     assert np.allclose(sparse_xi, dense_xi)
+
+@pytest.mark.parametrize("lengths", [[1]*4 + [4, 6]*3, [6, 4]*3 + [1]*4])
+def test_fit(model, dense_model, X, lengths):
+    lengths = np.array(lengths, dtype="int").reshape((-1, 1))
+    model.n_iter=1
+    dense_model.n_iter=1
+    dense_X = get_dense_X(X, lengths)
+    dense_model.fit(dense_X)
+    model.fit(X, lengths)
+    assert np.allclose(dense_model.transmat_, model.transmat_)
+    print(dense_model.startprob_)
+    print(model.startprob_)
+    assert np.allclose(dense_model.startprob_, model.startprob_)

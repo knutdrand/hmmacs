@@ -36,3 +36,4 @@ def xi_sum(fs, T, bs, os):
     prob = sum(fs[-1])
     xis = [(b[:, None] @ f[None, :]).T*o[None, :] for f, b, o in zip(fs, bs[1:], os[1:])]
     return T*np.sum(xis, axis=0)/prob
+

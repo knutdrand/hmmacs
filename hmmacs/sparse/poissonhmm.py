@@ -51,15 +51,17 @@ class PoissonHMM(_BaseSparseHMM):
         return stats
 
     def _accumulate_sufficient_statistics(self, stats, X, framelogprob,
-                                          posteriors, fwdlattice, bwdlattice):
+                                          posteriors, fwdlattice, bwdlattice, rls):
         super()._accumulate_sufficient_statistics(
-            stats, X, framelogprob, posteriors, fwdlattice, bwdlattice)
+            stats, X, framelogprob, posteriors, fwdlattice, bwdlattice, rls)
+        return
         if 'r' in self.params:
             stats['counts'] += np.sum(X.reshape((-1, 1))*posteriors, axis=0)
             stats['posts'] += np.sum(posteriors, axis=0)
 
     def _do_mstep(self, stats):
         super()._do_mstep(stats)
+        return
         if 'r' in self.params:
             self.rate_ = (stats['counts']/stats['posts'])
 

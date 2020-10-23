@@ -75,16 +75,25 @@ def compute_log_xi_sum(fs, T, bs, os, ls):
     if ls[0]>0:
         M_inv, s_M = log_mat_mul(ps[0], -(ds[0]*ls[0])[:, None] + rs[0], sps[0], sds[0][:, None]*srs[0])
         first_f, _ = log_mat_mul(fs[0][None, :],  M_inv, np.ones_like(fs[0][None, :]), s_M)
-        print("#", np.exp(first_f))
     else:
         first_f = fs[0][None, :] # DOESNT-MATTER WHAT 
     fs = np.vstack((first_f, fs))
     local_sums = [T+o[None, :]+ log_sum_range((p, d, r), b, f, l, (sp, sd, sr)).T-logprob
                   for p, d, r, b, f, o, l, sp, sd, sr in zip(ps, ds, rs, bs, fs, os, ls, sps, sds, srs) if l>0]
-    for l in local_sums:
-        print(np.exp(l))
     return logsumexp(local_sums, axis=0)
 
+def get_log_init_posterior(f, b, l, T, o):
+    if l == 1:
+        return f + b
+    M = np.exp(T) * np.exp(o)[None, :]
+    pdp = diagonalize(M)
+    p, d, r = (np.log(np.abs(m)) for m in pdp)
+    sp, sd, sr = (np.sign(m) for m in pdp)
+    M, s_M = log_mat_mul(p, (d*(l-1))[:, None] + r, sp, sd[:, None]*sr)
+    M_inv, s_M_inv = log_mat_mul(p, -(d*(l-1))[:, None] + r, sp, sd[:, None]*sr)
+    first_f, _ = log_mat_mul(f[None, :],  M_inv, np.ones_like(f[None, :]), s_M_inv)
+    first_b, _ = log_mat_mul(M, b[:, None], s_M,  np.ones_like(b[:, None]))
+    return first_f.flatten()+first_b.flatten()
 
 def xi_sum(fs, T, bs, os, ls):
     ls = ls.copy()
@@ -99,14 +108,11 @@ def xi_sum(fs, T, bs, os, ls):
         M_inv = np.linalg.inv(M)
         assert np.allclose(M_inv, ps[0] @ np.diag(1/ds[0]**ls[0]) @ rs[0]), (M, ps[0] @ np.diag(1/ds[0]**ls[0]) @ rs[0])
         first_f = fs[0][None, :] @ M_inv
-        print("+", first_f)
     else:
         first_f = fs[0][None, :] # DOESNT-MATTER WHAT 
     fs = np.vstack((first_f, fs))
     local_sums = [T*o[None, :]*sum_range((p, d, r), b, f, l).T/prob
                   for p, d, r, b, f, o, l in zip(ps, ds, rs, bs, fs, os, ls)]
-    for l in local_sums:
-        print(l)
     return np.sum(local_sums, axis=0)
 
 
