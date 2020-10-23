@@ -14,12 +14,10 @@ def compute_log_xi_sum(fwdlattice, log_transmat, bwdlattice, framelogprob):
                                      + framelogprob[t + 1, j]
                                      + bwdlattice[t + 1, j]
                                      - logprob)
-        print(np.exp(work_buffer), t)
         for i in range(n_components):
             for j in range(n_components):
                 log_xi_sum[i, j] = np.logaddexp(log_xi_sum[i, j],
                                                 work_buffer[i, j])
-        print(np.exp(log_xi_sum), t)
     return log_xi_sum
 
 def xi_sum_simple(fs, T, bs, os):
@@ -31,16 +29,10 @@ def xi_sum_simple(fs, T, bs, os):
         for i in range(n_components):
             for j in range(n_components):
                 tmp[i, j] = fs[t, i]*T[i, j]*os[t+1, j]*bs[t+1, j]/prob
-        print(tmp, t)
         xi += tmp
-        print(xi, t)
     return xi
                 
 def xi_sum(fs, T, bs, os):
     prob = sum(fs[-1])
-    xis = [(b[:, None]@f[None, :]).T*o[None, :] for f, b, o in zip(fs, bs[1:], os[1:])]
-    print("DENSE")
-    for x in xis:
-        print(x)
-    print("- DENSE")
+    xis = [(b[:, None] @ f[None, :]).T*o[None, :] for f, b, o in zip(fs, bs[1:], os[1:])]
     return T*np.sum(xis, axis=0)/prob
