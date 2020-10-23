@@ -115,4 +115,15 @@ def xi_sum(fs, T, bs, os, ls):
                   for p, d, r, b, f, o, l in zip(ps, ds, rs, bs, fs, os, ls)]
     return np.sum(local_sums, axis=0)
 
-
+def posterior_sum(f, T, b, o, l):
+    f = f.reshape((1, -1))
+    b = b.reshape((-1, 1))
+    M = T*o[None, :]
+    p, d, r = diagonalize(M)
+    A = r @ b @ f @ p
+    ratios = d/d[::-1]
+    d_ij = (1-ratios**l)/(1-ratios)
+    D = np.array([[l, d_ij[0]], 
+                  [d_ij[1], l]])
+    print(D, A)
+    return (p @ (D*A) @ r).diagonal()
