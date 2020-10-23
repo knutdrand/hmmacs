@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.linalg import matrix_power as mpow
 from scipy.special import logsumexp
+from itertools import product
+
 def diagonalize(matrices):
     l, p = np.linalg.eig(matrices)
     return p, l, np.linalg.inv(p)
@@ -41,6 +43,34 @@ def sum_range(pdp, b, f, l):
     A = r @ b @ f @ p
     S = diagonal_sum(d, A, l)
     return (p @ S @ r)
+
+
+def matprod(matrices):
+    res = np.zeros((matrices[0].shape[0], matrices[-1].shape[1]))
+    for i in range(matrices[0].shape[0]):
+        for j in range(matrices[-1].shape[1]):
+            tuples = [[i] + list(tup) + [j] for tup in  product(*(range(m.shape[1]) for m in matrices[:-1]))]
+            res[i, j] = sum(np.prod([matrices[t][i_tup[t], i_tup[t+1]] for t in range(len(matrices))]) for i_tup in tuples)
+    return res
+
+def log_matprod(matrices, signs):
+    shape = (matrices[0].shape[0], matrices[-1].shape[1])
+    res = np.zeros(shape)
+    out_signs = np.zeros(shape)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            tuples = [[i] + list(tup) + [j] for tup in  product(*(range(m.shape[1]) for m in matrices[:-1]))]
+            res[i, j], out_signs[i, j] = logsumexp([np.sum([matrices[t][i_tup[t], i_tup[t+1]] for t in range(len(matrices))]) for i_tup in tuples],
+                                  b = [np.prod([signs[t][i_tup[t], i_tup[t+1]] for t in range(len(matrices))]) for i_tup in tuples], return_sign=True)
+    return res, out_signs
+
+
+def log_mat_prod(logs, signs):
+    out_shape = (logs[0].shape[0], logs[-1].shape[1])
+    res = np.empty(out_shape)
+    sres = np.empty(out_shape)
+
+    
 
 def log_mat_mul(A, B, sA, sB):
     res = np.empty((A.shape[0], B.shape[1]))
@@ -125,5 +155,40 @@ def posterior_sum(f, T, b, o, l):
     d_ij = (1-ratios**l)/(1-ratios)
     D = np.array([[l, d_ij[0]], 
                   [d_ij[1], l]])
-    print(D, A)
     return (p @ (D*A) @ r).diagonal()
+
+
+def log_posterior_sum(f, T, b, o, l):
+    """
+    (1-r^n)/(1-r)
+    (1-r^-n)/(1-r^-1) = (r^n-1)/r^l/(r-1)/r
+    """
+    f = f.reshape((1, -1))
+    b = b.reshape((-1, 1))
+    M = T+o[None, :]
+    pdp= diagonalize(np.exp(M))
+    p, d, r = (np.log(np.abs(m)) for m in pdp)
+    sp, sd, sr = (np.sign(m) for m in pdp)
+    ratio = d[0]-d[1]
+    s_ratio = sd[0]*sd[1]
+    print(s_ratio, sd, d)
+    numerator, s = logsumexp([0, l*ratio], b=[1, -1*(s_ratio**l)], return_sign=True)
+    denominator, s2 = logsumexp((0, ratio), b=[1, -1*s_ratio], return_sign=True)
+    assert s*s2==1, (s, s2, d, sd, l)
+    d_ij = numerator-denominator
+    d_ji = d_ij-(l-1)*ratio
+    D = np.array([[np.log(l), d_ij], 
+                  [d_ji, np.log(l)]])
+    sD = np.array([[1, s*s2], 
+                   [s*s2*s_ratio**(l-1), 1]])
+
+    A, sA = log_matprod([r, b, f, p], [sr, np.ones_like(b), np.ones_like(f), sp])
+    # tmp_a, s_tmp_a = log_mat_mul(r, b, sr, np.ones_like(b))
+    # tmp_b, s_tmp_b = log_mat_mul(f, p, np.ones_like(f), sp)
+    # A, sA = log_mat_mul(tmp_a, tmp_b, s_tmp_a, s_tmp_b)
+    S = D+A
+    R, s= log_matprod([p, S, r], [sp, sA*sD, sr])
+    # tmp_c, s_tmp_c = log_mat_mul(p, S, sp, sA)
+    # R, s = log_mat_mul(tmp_c, r, s_tmp_c, sr)
+    assert np.all(s.diagonal()==1), (s, R, f, b, o, T, l, sp,sA,sr)
+    return R.diagonal(), s.diagonal()

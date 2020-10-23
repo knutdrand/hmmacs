@@ -1,9 +1,10 @@
 import pytest
 import numpy as np
-from hmmacs.sparse.estimation import diagonal_sum, sum_range, xi_sum, log_diagonal_sum, log_sum_range, compute_log_xi_sum, posterior_sum
+from hmmacs.sparse.estimation import diagonal_sum, sum_range, xi_sum, log_diagonal_sum, log_sum_range, compute_log_xi_sum, posterior_sum, log_posterior_sum
 from hmmacs.sparse.sparsebase import diagonalize
 from hmmacs.dense.xisum import xi_sum as dense_xi_sum
 from hmmacs.dense.xisum import compute_log_xi_sum as dense_log_xi_sum
+from scipy.special import logsumexp
 from .fixtures import *
 
 @pytest.fixture
@@ -42,7 +43,7 @@ def test_xi_sum(X, lengths, model, dense_model):
     lengths = np.array(lengths)[:, None]
     dense_X = get_dense_X(X, lengths)
     dense_os = dense_model._compute_log_likelihood(dense_X)
-    sparse_os = dense_model._compute_log_likelihood(X)
+    sparse_os = model._compute_log_likelihood(X)
     dense_fs = np.exp(dense_model._do_forward_pass(dense_os)[1])
     dense_bs = np.exp(dense_model._do_backward_pass(dense_os))
     dense_xi = dense_xi_sum(dense_fs, dense_model.transmat_, dense_bs, np.exp(dense_os))
@@ -122,7 +123,7 @@ def test_posterior_sum(X, lengths, model, dense_model):
     dense_X = get_dense_X(X, lengths)
     dense_posteriors = dense_model.predict_proba(dense_X)
     dense_sum = np.sum(dense_posteriors, axis=0)
-    sparse_os = dense_model._compute_log_likelihood(X)
+    sparse_os = model._compute_log_likelihood(X)
     sparse_fs = np.exp(model._do_forward_pass(sparse_os, lengths)[1])
     sparse_bs = np.exp(model._do_backward_pass(sparse_os, lengths))
     prob = np.sum(sparse_fs[-1].flatten())
@@ -132,3 +133,43 @@ def test_posterior_sum(X, lengths, model, dense_model):
     sparse_sum = np.sum(sparse_posteriors, axis=0)
     assert np.allclose(sparse_sum, dense_sum)
 
+# @pytest.mark.parametrize("X", [[5, 6, 7, 8]])
+# @pytest.mark.parametrize("lengths", [[4, 3, 2, 1], [1, 2, 3, 4]])
+@pytest.mark.parametrize("lengths", [[1]*4 + [4, 6]*3, [6, 4]*3 + [1]*4])
+def test_log_posterior_sum(X, lengths, model):
+    # X = np.array(X)[:, None]
+    lengths = np.array(lengths)[:, None]
+    sparse_os = model._compute_log_likelihood(X)
+    sparse_fs = model._do_forward_pass(sparse_os, lengths)[1]
+    sparse_bs = model._do_backward_pass(sparse_os, lengths)
+    prob = np.sum(np.exp(sparse_fs[-1]).flatten())
+    log_prob = np.log(prob)
+    posteriors =  [posterior_sum(np.exp(f), model.transmat_, np.exp(b), np.exp(o), int(l))/prob
+                          for f, b, o, l in zip(sparse_fs, sparse_bs, sparse_os, lengths)]
+    p_sum = np.sum(posteriors, axis=0)
+    log_posteriors =  [log_posterior_sum(f, np.log(model.transmat_), b, o, int(l))[0]-log_prob
+                       for f, b, o, l in zip(sparse_fs, sparse_bs, sparse_os, lengths)]
+    log_p_sum = logsumexp(log_posteriors, axis=0)
+    p_sum = logsumexp(np.log(posteriors), axis=0)
+    assert np.allclose(p_sum, log_p_sum)
+
+
+@pytest.mark.parametrize("lengths", [[1]*4 + [4, 6]*3])#, [6, 4]*3 + [1]*4])
+def _test_full_log_posterior_sum(X, lengths, model, dense_model):
+    lengths = np.array(lengths)[:, None]
+    dense_X = get_dense_X(X, lengths)
+    dense_posteriors = dense_model.predict_proba(dense_X)
+    dense_sum = np.sum(dense_posteriors, axis=0)
+    sparse_os = model._compute_log_likelihood(X)
+    sparse_fs = model._do_forward_pass(sparse_os, lengths)[1]
+    sparse_bs = model._do_backward_pass(sparse_os, lengths)
+    logprob = logsumexp(sparse_fs[-1].flatten())
+    ts = np.cumsum(lengths)-1
+    print(np.cumsum(dense_posteriors, axis=0)[ts])
+    log_sparse_posteriors =  [log_posterior_sum(f, np.log(model.transmat_), b, o, int(l))
+                          for f, b, o, l in zip(sparse_fs, sparse_bs, sparse_os, lengths)]
+    sparse_posteriors = [np.exp(R)*s/np.exp(logprob) for R, s in log_sparse_posteriors]
+    print(np.cumsum(sparse_posteriors, axis=0))
+    print(np.sum(sparse_posteriors, axis=1))
+    sparse_sum = np.sum(sparse_posteriors, axis=0)
+    assert np.allclose(sparse_sum, dense_sum)
