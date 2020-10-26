@@ -169,7 +169,7 @@ def _test_log_posterior_sum(X, lengths, model):
     assert np.allclose(p_sum, log_p_sum)
 
 
-@pytest.mark.parametrize("lengths", [[1]*4 + [5, 5]*3, [6, 4]*3 + [1]*4, [100]*10])
+@pytest.mark.parametrize("lengths", [[1]*4 + [5, 5]*3, [6, 4]*3 + [1]*4, [5]*10])
 def test_full_log_posterior_sum(X, lengths, model, dense_model):
     lengths = np.array(lengths)[:, None]
     dense_X = get_dense_X(X, lengths)

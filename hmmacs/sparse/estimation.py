@@ -104,7 +104,7 @@ def compute_log_xi_sum(fs, T, bs, os, ls):
     else:
         first_f = fs[0][None, :] # DOESNT-MATTER WHAT 
     fs = np.vstack((first_f, fs))
-    local_sums = [T+o[None, :]+ log_sum_range((p, d, r), b, f, l, (sp, sd, sr)).T-logprob
+    local_sums = [T+o[None, :] + log_sum_range((p, d, r), b, f, l, (sp, sd, sr)).T-logprob
                   for p, d, r, b, f, o, l, sp, sd, sr in zip(ps, ds, rs, bs, fs, os, ls, sps, sds, srs) if l>0]
     print(local_sums)
     return logsumexp(local_sums, axis=0)
