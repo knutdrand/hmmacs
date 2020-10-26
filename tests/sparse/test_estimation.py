@@ -1,10 +1,11 @@
 import pytest
 import numpy as np
-from hmmacs.sparse.estimation import diagonal_sum, sum_range, xi_sum, log_diagonal_sum, log_sum_range, compute_log_xi_sum, posterior_sum, log_posterior_sum
+from hmmacs.sparse.estimation import diagonal_sum, sum_range, xi_sum, log_diagonal_sum, log_sum_range, compute_log_xi_sum, posterior_sum, log_posterior_sum, verbose_posterior_sum, verbose_log_posterior_sum
 from hmmacs.sparse.sparsebase import diagonalize
 from hmmacs.dense.xisum import xi_sum as dense_xi_sum
 from hmmacs.dense.xisum import compute_log_xi_sum as dense_log_xi_sum
 from scipy.special import logsumexp
+from hmmlearn.utils import normalize
 from .fixtures import *
 
 @pytest.fixture
@@ -86,18 +87,24 @@ def test_log_xi_sum(X, lengths, model):
     print(logged)
     assert np.allclose(true, np.exp(logged))
 
-
+@pytest.mark.parametrize("lengths", [[1]*4 + [5, 5]*3, [6, 4]*3 + [1]*4, [10]*10])
 def test_xi_sum_full(model, dense_model, X, lengths):
+    lengths = np.array(lengths)[:, None]
     dense_X = get_dense_X(X, lengths)
     dense_os = dense_model._compute_log_likelihood(dense_X)
     sparse_os = model._compute_log_likelihood(X)
     dense_fs = dense_model._do_forward_pass(dense_os)[1]
     dense_bs = dense_model._do_backward_pass(dense_os)
     dense_xi = dense_log_xi_sum(dense_fs, np.log(dense_model.transmat_), dense_bs, dense_os)
-
+    ts = np.cumsum(lengths)-1
+    
     sparse_fs = model._do_forward_pass(sparse_os, lengths)[1]
     sparse_bs = model._do_backward_pass(sparse_os, lengths)
     sparse_xi = compute_log_xi_sum(sparse_fs, np.log(model.transmat_), sparse_bs, sparse_os, lengths)
+    sparse_xi = np.exp(sparse_xi)
+    dense_xi = np.exp(dense_xi)
+    normalize(sparse_xi, axis=1)
+    normalize(dense_xi, axis=1)
     print(sparse_xi)
     print(dense_xi)
     assert np.allclose(sparse_xi, dense_xi)
@@ -110,15 +117,18 @@ def test_fit(model, dense_model, X, lengths):
     dense_X = get_dense_X(X, lengths)
     dense_model.fit(dense_X)
     model.fit(X, lengths)
+    print(dense_model.transmat_)
+    print(model.transmat_)
     assert np.allclose(dense_model.transmat_, model.transmat_)
     print(dense_model.startprob_)
     print(model.startprob_)
     assert np.allclose(dense_model.startprob_, model.startprob_)
 
-@pytest.mark.parametrize("X", [[5, 6, 7, 8]])
-@pytest.mark.parametrize("lengths", [[4, 3, 2, 1], [1, 2, 3, 4]])
-def test_posterior_sum(X, lengths, model, dense_model):
-    X = np.array(X)[:, None]
+# @pytest.mark.parametrize("X", [[5, 6, 7, 8]])
+# @pytest.mark.parametrize("lengths", [[4, 3, 2, 1], [1, 2, 3, 4]])
+@pytest.mark.parametrize("lengths", [[1]*4 + [4, 6]*3])#, [6, 4]*3 + [1]*4])
+def _test_posterior_sum(X, lengths, model, dense_model):
+    # X = np.array(X)[:, None]
     lengths = np.array(lengths)[:, None]
     dense_X = get_dense_X(X, lengths)
     dense_posteriors = dense_model.predict_proba(dense_X)
@@ -127,16 +137,21 @@ def test_posterior_sum(X, lengths, model, dense_model):
     sparse_fs = np.exp(model._do_forward_pass(sparse_os, lengths)[1])
     sparse_bs = np.exp(model._do_backward_pass(sparse_os, lengths))
     prob = np.sum(sparse_fs[-1].flatten())
+    print(prob)
     ts = np.cumsum(lengths)-1
-    sparse_posteriors =  [posterior_sum(f, model.transmat_, b, np.exp(o), int(l))/prob
+    sparse_posteriors =  [verbose_posterior_sum(f, model.transmat_, b, np.exp(o), int(l), prob)
                           for f, b, o, l in zip(sparse_fs, sparse_bs, sparse_os, lengths)]
+    print(sparse_posteriors)
+    print(np.cumsum(dense_posteriors, axis=0)[ts])
+    print("-----------------")
+    print(np.cumsum(sparse_posteriors, axis=0))
     sparse_sum = np.sum(sparse_posteriors, axis=0)
     assert np.allclose(sparse_sum, dense_sum)
 
 # @pytest.mark.parametrize("X", [[5, 6, 7, 8]])
 # @pytest.mark.parametrize("lengths", [[4, 3, 2, 1], [1, 2, 3, 4]])
 @pytest.mark.parametrize("lengths", [[1]*4 + [4, 6]*3, [6, 4]*3 + [1]*4])
-def test_log_posterior_sum(X, lengths, model):
+def _test_log_posterior_sum(X, lengths, model):
     # X = np.array(X)[:, None]
     lengths = np.array(lengths)[:, None]
     sparse_os = model._compute_log_likelihood(X)
@@ -154,8 +169,8 @@ def test_log_posterior_sum(X, lengths, model):
     assert np.allclose(p_sum, log_p_sum)
 
 
-@pytest.mark.parametrize("lengths", [[1]*4 + [4, 6]*3])#, [6, 4]*3 + [1]*4])
-def _test_full_log_posterior_sum(X, lengths, model, dense_model):
+@pytest.mark.parametrize("lengths", [[1]*4 + [5, 5]*3, [6, 4]*3 + [1]*4, [100]*10])
+def test_full_log_posterior_sum(X, lengths, model, dense_model):
     lengths = np.array(lengths)[:, None]
     dense_X = get_dense_X(X, lengths)
     dense_posteriors = dense_model.predict_proba(dense_X)
@@ -165,11 +180,16 @@ def _test_full_log_posterior_sum(X, lengths, model, dense_model):
     sparse_bs = model._do_backward_pass(sparse_os, lengths)
     logprob = logsumexp(sparse_fs[-1].flatten())
     ts = np.cumsum(lengths)-1
-    print(np.cumsum(dense_posteriors, axis=0)[ts])
-    log_sparse_posteriors =  [log_posterior_sum(f, np.log(model.transmat_), b, o, int(l))
-                          for f, b, o, l in zip(sparse_fs, sparse_bs, sparse_os, lengths)]
-    sparse_posteriors = [np.exp(R)*s/np.exp(logprob) for R, s in log_sparse_posteriors]
-    print(np.cumsum(sparse_posteriors, axis=0))
-    print(np.sum(sparse_posteriors, axis=1))
+    print(np.exp(sparse_fs+sparse_bs-logprob))
+    print(dense_posteriors[ts])
+    first_f = (model.startprob_*np.exp(sparse_os[0]).reshape((1, -1))) @ (np.linalg.inv(model.transmat_*np.exp(sparse_os[0][None, :])))
+    sparse_fs = np.vstack((np.log(first_f), sparse_fs))
+    log_sparse_posteriors = [log_posterior_sum(f, np.log(model.transmat_), b, o, int(l), logprob)
+                             for f, b, o, l in zip(sparse_fs, sparse_bs, sparse_os, lengths)]
+    print(log_sparse_posteriors)
+    sparse_posteriors = np.exp(log_sparse_posteriors)
+    print("D", np.cumsum(dense_posteriors, axis=0)[ts])
+    print("S", np.cumsum(sparse_posteriors, axis=0))
+    # print(np.sum(sparse_posteriors, axis=1))
     sparse_sum = np.sum(sparse_posteriors, axis=0)
     assert np.allclose(sparse_sum, dense_sum)

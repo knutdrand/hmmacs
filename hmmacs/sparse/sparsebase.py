@@ -64,7 +64,7 @@ class _BaseSparseHMM(_BaseHMM):
             lp, ld, lr = (lps[t], lds[t], lp_invs[t])
             sp, sd, sr = (sps[t], sds[t], sp_invs[t])
             for j in range(2):
-                fwdlattice[t, j] = logsumexp([lv[c] + lp[c, k]+ld[k]+lr[k, j] for k in range(2) for c in range(2)], 
+                fwdlattice[t, j] = logsumexp([lv[c] + lp[c, k]+ld[k]+lr[k, j] for k in range(2) for c in range(2)],
                                              b=[sp[c, k]*sd[k]*sr[k, j] for k in range(2) for c in range(2)])
             lv = fwdlattice[t]
         with np.errstate(under="ignore"):

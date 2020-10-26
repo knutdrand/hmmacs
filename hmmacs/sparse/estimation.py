@@ -65,13 +65,6 @@ def log_matprod(matrices, signs):
     return res, out_signs
 
 
-def log_mat_prod(logs, signs):
-    out_shape = (logs[0].shape[0], logs[-1].shape[1])
-    res = np.empty(out_shape)
-    sres = np.empty(out_shape)
-
-    
-
 def log_mat_mul(A, B, sA, sB):
     res = np.empty((A.shape[0], B.shape[1]))
     sres = np.empty((A.shape[0], B.shape[1]))
@@ -86,10 +79,13 @@ def log_sum_range(pdp, b, f, l, sign_pdp):
     f = f.reshape((1, 2))
     p, d, r = pdp
     sp, sd, sr = sign_pdp
-    tmp_a, s_tmp_a = log_mat_mul(r, b, sr, np.ones_like(b))
-    tmp_b, s_tmp_b = log_mat_mul(f, p, np.ones_like(f), sp)
-    A, sA = log_mat_mul(tmp_a, tmp_b, s_tmp_a, s_tmp_b)
+    # tmp_a, s_tmp_a = log_mat_mul(r, b, sr, np.ones_like(b))
+    # tmp_b, s_tmp_b = log_mat_mul(f, p, np.ones_like(f), sp)
+    A, sA = log_matprod([r, b, f, p], [sr, np.ones_like(b), np.ones_like(f), sp])
+    # A, sA = log_mat_mul(tmp_a, tmp_b, s_tmp_a, s_tmp_b)
+    # assert np.allclose(A, Atmp), (A, Atmp, pdp, b,f,l)
     S = log_diagonal_sum(d, A, l, sd)
+    return log_matprod([p, S, r], [sp, sA, sr])[0]
     tmp_c, s_tmp_c = log_mat_mul(p, S, sp, sA)
     return log_mat_mul(tmp_c, r, s_tmp_c, sr)[0]
 
@@ -110,6 +106,7 @@ def compute_log_xi_sum(fs, T, bs, os, ls):
     fs = np.vstack((first_f, fs))
     local_sums = [T+o[None, :]+ log_sum_range((p, d, r), b, f, l, (sp, sd, sr)).T-logprob
                   for p, d, r, b, f, o, l, sp, sd, sr in zip(ps, ds, rs, bs, fs, os, ls, sps, sds, srs) if l>0]
+    print(local_sums)
     return logsumexp(local_sums, axis=0)
 
 def get_log_init_posterior(f, b, l, T, o):
@@ -145,20 +142,77 @@ def xi_sum(fs, T, bs, os, ls):
                   for p, d, r, b, f, o, l in zip(ps, ds, rs, bs, fs, os, ls)]
     return np.sum(local_sums, axis=0)
 
-def posterior_sum(f, T, b, o, l):
+def posterior_sum(f, T, b, o, l, prob=1):
     f = f.reshape((1, -1))
     b = b.reshape((-1, 1))
     M = T*o[None, :]
     p, d, r = diagonalize(M)
-    A = r @ b @ f @ p
+    A = r @ (b/prob) @ f @ p
     ratios = d/d[::-1]
     d_ij = (1-ratios**l)/(1-ratios)
     D = np.array([[l, d_ij[0]], 
                   [d_ij[1], l]])
-    return (p @ (D*A) @ r).diagonal()
+    res = (p @ (D*A) @ r).diagonal()
+    assert np.all(res>0), (res, A, D, f, b, o, l)
+    return res
+
+def log_posterior_sum(f, T, b, o, l, logprob=0):
+    M = np.exp(T+o[None, :])
+    f = log_mat_mul(f.reshape((1, -1)), np.log(M), np.ones((1,2)), np.ones_like(M))[0].flatten() # Get first f of range
+    pdp = diagonalize(M)
+    lpdp = (np.log(np.abs(m)) for m in pdp)
+    spdp = (np.sign(m) for m in pdp)
+    return log_sum_range(lpdp, b, f, l, spdp).diagonal()-logprob
+
+def verbose_log_posterior_sum(f, T, b, o, l, logprob=1):
+    f = f.flatten()
+    b = b.flatten()
+    M = np.exp(T+o[None, :])
+    pdp = diagonalize(M)
+    lp, ld, lr = (np.log(np.abs(m)) for m in pdp)
+    sp, sd, sr = (np.sign(m) for m in pdp)
+    fs = []
+    bs = []
+    for t in range(0, l):
+        cur_f = np.zeros(2)
+        cur_b = np.zeros(2)
+        for i in range(2):
+            cur_b[i] = logsumexp([lp[i, k]+t*ld[k]+lr[k, c]+b[c] for k in range(2) for c in range(2)], 
+                                 b=[sp[i, k]*sd[k]*sr[k, c] for k in range(2) for c in range(2)])
+            cur_f[i] = logsumexp([f[c] + lp[c, k]+(l-t)*ld[k]+lr[k, i] for k in range(2) for c in range(2)], 
+                                 b=[sp[c, k]*sd[k]*sr[k, i] for k in range(2) for c in range(2)])
+        print(t, l, np.exp(cur_f.flatten()+cur_b.flatten()-logprob))
+        fs.append(cur_f)
+        bs.append(cur_b)
+    posteriors = [f.flatten() + b.flatten()-logprob for f, b in zip(fs, bs)]
+    return logsumexp(posteriors, axis=0)
+
+def verbose_posterior_sum(f, T, b, o, l, prob=1):
+    f = f.reshape((1, -1))
+    b = b.reshape((-1, 1))
+    M = T*o[None, :]
+    # M_inv = np.linalg.inv(M)
+    bs = [(mpow(M, i) @ b).flatten() for i in range(l)]
+    fs = [(f @ mpow(M, -i)).flatten() for i in range(l)]
+    return np.sum([b*f/prob for b, f in zip(bs, fs)], axis=0)
+         
+    return np.sum([(mpow(M, -i) @ b).flatten()*(f @mpow(M ,i)).flatten()/prob
+                   for i in range(l)], axis=0)
 
 
-def log_posterior_sum(f, T, b, o, l):
+    p, d, r = diagonalize(M)
+    v = (r @ b).flatten()
+    w = (f @ p).flatten()
+    res = np.zeros(2)
+    for i in range(2):
+        res[i] = l*p[i, 0]*r[0, i]*v[0]*w[0]
+        res[i] += l*p[i, 1]*r[1, i]*v[1]*w[1]
+        res[i] += (1-(d[0]/d[1])**l)/(1-d[0]/d[1])*p[i, 0]*r[1, i]*v[0]*w[1]
+        res[i] += (1-(d[1]/d[0])**l)/(1-d[1]/d[0])*p[i, 1]*r[0, i]*v[1]*w[0]
+    assert np.all(res>0), (res, v, w, f, b, o, l)
+    return res/prob
+
+def log_posterior_sum_old(f, T, b, o, l):
     """
     (1-r^n)/(1-r)
     (1-r^-n)/(1-r^-1) = (r^n-1)/r^l/(r-1)/r

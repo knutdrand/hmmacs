@@ -5,7 +5,7 @@ from hmmacs.dense.poissonhmm import PoissonHMM as DensePoissonHMM
 
 @pytest.fixture
 def model():
-    m = PoissonHMM()
+    m = PoissonHMM(init_params="")
     m.startprob_ = np.array([0.2, 0.8])
     m.transmat_ = np.array([[0.3, 0.7],
                             [0.1, 0.9]])
@@ -14,7 +14,7 @@ def model():
 
 @pytest.fixture
 def dense_model():
-    m = DensePoissonHMM()
+    m = DensePoissonHMM(init_params="")
     m.startprob_ = np.array([0.2, 0.8])
     m.transmat_ = np.array([[0.3, 0.7],
                             [0.1, 0.9]])
