@@ -80,7 +80,7 @@ class PoissonHMM(_BaseHMM):
                  startprob_prior=1.0, transmat_prior=1.0,
                  algorithm="viterbi", random_state=None,
                  n_iter=10, tol=1e-2, verbose=False,
-                 params="stk", init_params="stk"):
+                 params="str", init_params="str"):
         _BaseHMM.__init__(self, n_components,
                           startprob_prior=startprob_prior,
                           transmat_prior=transmat_prior,
@@ -94,7 +94,7 @@ class PoissonHMM(_BaseHMM):
         return {
             "s": nc - 1,
             "t": nc * (nc - 1),
-            "k": nc
+            "r": nc
         }
 
     def _init(self, X, lengths=None):
@@ -139,7 +139,7 @@ class PoissonHMM(_BaseHMM):
         Check if ``X`` is a sample from a Poisson distribution, i.e. an
         array of non-negative integers.
         """
-        assert np.issubdtype(X.dtype, np.integer), X
+        # assert np.issubdtype(X.dtype, np.integer), X
         assert X.min() >= 0, X
         if hasattr(self, "n_features"):
             assert self.n_features == 1

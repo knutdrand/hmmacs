@@ -2,8 +2,8 @@ import pytest
 import numpy as np
 
 from bdgtools import Regions, BedGraph
-from hmmcaller.dense.poissonhmm import PoissonHMM
-from hmmcaller.dense.adapters import run
+from hmmacs.dense.poissonhmm import PoissonHMM
+from hmmacs.dense.adapters import run
 
 @pytest.fixture
 def bedgraph():
@@ -17,5 +17,5 @@ def regions():
     return {"chr1": regions}
 
 def test_run(bedgraph, regions):
-    assert run(bedgraph, PoissonHMM()) == regions
+    assert run(bedgraph, PoissonHMM())[0] == regions
     

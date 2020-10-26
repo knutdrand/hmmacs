@@ -5,7 +5,8 @@ def run(bedgraphs, model):
     model.fit(X, lengths)
     states = model.predict(X, lengths)
     print(states)
-    return to_regions(states, lengths, chroms)
+    probs = model._compute_log_likelihood(X)
+    return to_regions(states, probs, lengths, chroms)
 
 def run_controlled(t_bedgraphs, c_bedgraphs, model):
     X_t, lengths_t, chroms_t = from_bedgraphs(t_bedgraphs)
