@@ -123,6 +123,10 @@ def test_fit(model, dense_model, X, lengths):
     print(dense_model.startprob_)
     print(model.startprob_)
     assert np.allclose(dense_model.startprob_, model.startprob_)
+    print(dense_model.rate_)
+    print(model.rate_)
+    assert np.allclose(dense_model.rate_, model.rate_)
+
 
 # @pytest.mark.parametrize("X", [[5, 6, 7, 8]])
 # @pytest.mark.parametrize("lengths", [[4, 3, 2, 1], [1, 2, 3, 4]])

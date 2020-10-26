@@ -1,5 +1,7 @@
+from scipy.special import logsumexp
 from scipy.stats import poisson 
 import numpy as np
+from .estimation import log_posterior_sum
 from .sparsebase import _BaseSparseHMM
 from sklearn.utils import check_random_state
 from sklearn import cluster
@@ -9,7 +11,7 @@ class PoissonHMM(_BaseSparseHMM):
                  startprob_prior=1.0, transmat_prior=1.0,
                  algorithm="viterbi", random_state=None,
                  n_iter=10, tol=1e-2, verbose=False,
-                 params="stk", init_params="stk"):
+                 params="str", init_params="str"):
         super().__init__(n_components,
                          startprob_prior=startprob_prior,
                          transmat_prior=transmat_prior,
@@ -23,7 +25,7 @@ class PoissonHMM(_BaseSparseHMM):
         return {
             "s": nc - 1,
             "t": nc * (nc - 1),
-            "k": nc
+            "r": nc
         }
 
     def _init(self, X, lengths=None):
@@ -52,16 +54,23 @@ class PoissonHMM(_BaseSparseHMM):
 
     def _accumulate_sufficient_statistics(self, stats, X, framelogprob,
                                           posteriors, fwdlattice, bwdlattice, rls):
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         super()._accumulate_sufficient_statistics(
             stats, X, framelogprob, posteriors, fwdlattice, bwdlattice, rls)
-        return
         if 'r' in self.params:
-            stats['counts'] += np.sum(X.reshape((-1, 1))*posteriors, axis=0)
-            stats['posts'] += np.sum(posteriors, axis=0)
+
+            first_f = (self.startprob_*np.exp(framelogprob[0]).reshape((1, -1))) @ (np.linalg.inv(self.transmat_*np.exp(framelogprob[0][None, :])))
+            fwdlattice = np.vstack((np.log(first_f), fwdlattice))
+            logprob = logsumexp(fwdlattice[-1].flatten())
+            posterior_sums = np.exp(np.array([log_posterior_sum(f, np.log(self.transmat_), b, o, int(l), logprob)
+                                              for f, b, o, l in zip(fwdlattice, bwdlattice, framelogprob, rls)]))
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print(np.sum(posterior_sums, axis=1))
+            stats['counts'] += np.sum(X.reshape((-1, 1))*posterior_sums, axis=0)
+            stats['posts'] += np.sum(posterior_sums, axis=0)
 
     def _do_mstep(self, stats):
         super()._do_mstep(stats)
-        return
         if 'r' in self.params:
             self.rate_ = (stats['counts']/stats['posts'])
 
