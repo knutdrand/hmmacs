@@ -82,6 +82,7 @@ def test_log_xi_sum(X, lengths, model):
     sparse_fs = model._do_forward_pass(sparse_os, lengths)[1]
     sparse_bs = model._do_backward_pass(sparse_os, lengths)
     true = xi_sum(np.exp(sparse_fs), model.transmat_, np.exp(sparse_bs), np.exp(sparse_os), lengths)
+    sparse_fs = np.vstack((np.log(model.startprob_)+sparse_os[0], sparse_fs))
     logged = compute_log_xi_sum(sparse_fs, np.log(model.transmat_), sparse_bs, sparse_os, lengths)
     print(true)
     print(logged)
@@ -98,9 +99,7 @@ def test_xi_sum_full(model, dense_model, X, lengths):
     dense_xi = dense_log_xi_sum(dense_fs, np.log(dense_model.transmat_), dense_bs, dense_os)
     sparse_fs = model._do_forward_pass(sparse_os, lengths)[1]
     sparse_bs = model._do_backward_pass(sparse_os, lengths)
-    #first_f = (model.startprob_*np.exp(sparse_os[0]).reshape((1, -1))) @ (np.linalg.inv(model.transmat_*np.exp(sparse_os[0][None, :])))
     sparse_fs = np.vstack((np.log(model.startprob_)+sparse_os[0], sparse_fs))
-    print("SPARS")
     sparse_xi = compute_log_xi_sum(sparse_fs, np.log(model.transmat_), sparse_bs, sparse_os, lengths)
     sparse_xi = np.exp(sparse_xi)
     dense_xi = np.exp(dense_xi)
@@ -110,7 +109,7 @@ def test_xi_sum_full(model, dense_model, X, lengths):
     print(dense_xi)
     assert np.allclose(sparse_xi, dense_xi)
 
-@pytest.mark.parametrize("lengths", [[1]*4 + [4, 6]*3, [6, 4]*3 + [1]*4])
+@pytest.mark.parametrize("lengths", [[1]*4 + [4, 6]*3, [6, 4]*3 + [1]*4, [10]*10])
 def test_fit(model, dense_model, X, lengths):
     lengths = np.array(lengths, dtype="int").reshape((-1, 1))
     model.n_iter=1

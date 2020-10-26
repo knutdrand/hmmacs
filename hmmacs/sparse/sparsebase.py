@@ -74,7 +74,7 @@ class _BaseSparseHMM(_BaseHMM):
                                            posteriors, fwdlattice, bwdlattice, run_lengths):
         stats['nobs'] += 1
         if 's' in self.params:
-            first_posterior = get_log_init_posterior(fwdlattice[0],
+            first_posterior = get_log_init_posterior(np.log(self.startprob_)+framelogprob[0],
                                                      bwdlattice[0],
                                                      run_lengths[0],
                                                      log_mask_zero(self.transmat_),
@@ -85,8 +85,12 @@ class _BaseSparseHMM(_BaseHMM):
             n_samples, n_components = framelogprob.shape
             if n_samples <= 1:
                 return
-            log_xi_sum = compute_log_xi_sum(fwdlattice, log_mask_zero(self.transmat_), 
-                                            bwdlattice, framelogprob, run_lengths)
+            full_fwdlattice = np.vstack((np.log(self.startprob_)+framelogprob[0], fwdlattice))
+            log_xi_sum = compute_log_xi_sum(full_fwdlattice,
+                                            log_mask_zero(self.transmat_), 
+                                            bwdlattice, 
+                                            framelogprob, 
+                                            run_lengths)
             with np.errstate(under="ignore"):
                 stats['trans'] += np.exp(log_xi_sum)
 
