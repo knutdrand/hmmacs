@@ -98,15 +98,16 @@ def compute_log_xi_sum(fs, T, bs, os, ls):
     ps, ds, rs = (np.log(np.abs(m)) for m in pdps)
     sps, sds, srs = (np.sign(m) for m in pdps)
     logprob = logsumexp(fs[-1])
-    if ls[0]>0:
-        M_inv, s_M = log_mat_mul(ps[0], -(ds[0]*ls[0])[:, None] + rs[0], sps[0], sds[0][:, None]*srs[0])
-        first_f, _ = log_mat_mul(fs[0][None, :],  M_inv, np.ones_like(fs[0][None, :]), s_M)
-    else:
-        first_f = fs[0][None, :] # DOESNT-MATTER WHAT 
-    fs = np.vstack((first_f, fs))
+    #M_inv, s_M = log_mat_mul(ps[0], -(ds[0]*ls[0])[:, None] + rs[0], sps[0], sds[0][:, None]*srs[0])
+    #first_f, _ = log_mat_mul(fs[0][None, :],  M_inv, np.ones_like(fs[0][None, :]), s_M)
+    #fs = np.vstack((first_f, fs))
     local_sums = [T+o[None, :] + log_sum_range((p, d, r), b, f, l, (sp, sd, sr)).T-logprob
                   for p, d, r, b, f, o, l, sp, sd, sr in zip(ps, ds, rs, bs, fs, os, ls, sps, sds, srs) if l>0]
+
     print(local_sums)
+    # print(np.cumsum(local_sums, axis=0)[:, 0, 0])
+    # print([ls[0, 0] for ls in local_sums])
+    # print([np.sum(np.exp(ls)/l, axis=1) for ls, l in zip(local_sums, ls)])
     return logsumexp(local_sums, axis=0)
 
 def get_log_init_posterior(f, b, l, T, o):
