@@ -185,8 +185,6 @@ def test_full_log_posterior_sum(X, lengths, model, dense_model):
     logT = np.log(model.transmat_)
     inv_mat, s_inv_mat = log_inv(logT+ sparse_os[0][None, :], np.sign(model.transmat_))
     first_f, sf = log_mat_mul((np.log(model.startprob_) + sparse_os[0]).reshape((1, -1)), inv_mat, np.ones((1, 2)), s_inv_mat)
-    # first_f = (model.startprob_*np.exp(sparse_os[0]).reshape((1, -1))) @ (np.linalg.inv(model.transmat_*sparse_os[0][None, :]), np.ones((1, 2)), np.)
-    print(first_f, sf)
     assert np.all(sf==1)
     sparse_fs = np.vstack((first_f, sparse_fs))
     log_sparse_posteriors = [log_posterior_sum(f, np.log(model.transmat_), b, o, int(l), logprob)
