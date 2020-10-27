@@ -118,10 +118,7 @@ def get_log_init_posterior(f, b, l, T, o):
     if l == 1:
         return f + b
     M = T + o[None, :]
-    # pdp = diagonalize(M)
     (p, sp), (d, sd), (r, sr) = log_diagonalize(M)
-    #p, d, r = (np.log(np.abs(m)) for m in pdp)
-    #sp, sd, sr = (np.sign(m) for m in pdp)
     M, s_M = log_mat_mul(p, (d*(l-1))[:, None] + r, sp, sd[:, None]*sr)
     first_b, _ = log_mat_mul(M, b[:, None], s_M,  np.ones_like(b[:, None]))
     return f.flatten()+first_b.flatten()
