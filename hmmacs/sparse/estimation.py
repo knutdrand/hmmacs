@@ -35,7 +35,7 @@ def log_diagonal_sum(d, A, l, sd):
     res = np.array([[np.log(l)+(l-1)*d1, dij],
                     [dij, np.log(l)+d2*(l-1)]])+A
     assert np.all(~np.isnan(res)), res
-    # assert np.all(~np.isinf(res)), (res, A, d, l, sd)
+    assert np.all(~np.isinf(res)), (res, A, d, l, sd)
     return res
                      
 
@@ -92,11 +92,9 @@ def log_sum_range(pdp, b, f, l, sign_pdp):
     p, d, r = pdp
     sp, sd, sr = sign_pdp
     A, sA = log_matprod([r, b, f, p], [sr, np.ones_like(b), np.ones_like(f), sp])
-    # assert np.all(~np.isinf(A)), (A, pdp, sign_pdp, b, f)
+    assert np.all(~np.isinf(A)), (A, pdp, sign_pdp, b, f)
     S = log_diagonal_sum(d, A, l, sd)
     return log_matprod([p, S, r], [sp, sA, sr])[0]
-    tmp_c, s_tmp_c = log_mat_mul(p, S, sp, sA)
-    return log_mat_mul(tmp_c, r, s_tmp_c, sr)[0]
 
 def compute_log_xi_sum(fs, T, bs, os, ls):
     ls = ls.copy()

@@ -53,15 +53,11 @@ def test_xi_sum(X, lengths, model, dense_model):
     sparse_fs = np.exp(model._do_forward_pass(sparse_os, lengths)[1])
     sparse_bs = np.exp(model._do_backward_pass(sparse_os, lengths))
     sparse_xi = xi_sum(sparse_fs, model.transmat_, sparse_bs, np.exp(sparse_os), lengths)
-    print(sparse_xi)
-    print(dense_xi)
     assert np.allclose(sparse_xi, dense_xi)
 
 def test_log_diagonal_sum(d, A):
     true = diagonal_sum(d, A, l)
     logged = log_diagonal_sum(np.log(np.abs(d)), np.log(A), l, np.sign(d))
-    print(true)
-    print(np.exp(logged))
     assert np.allclose(np.exp(logged), true)
 
 def test_log_sum_range(d, A, f, b):
@@ -70,8 +66,6 @@ def test_log_sum_range(d, A, f, b):
     log_pdp = tuple(np.log(abs(m)) for m in pdp)
     sign_pdp = tuple(np.sign(m) for m in pdp)
     logged = log_sum_range(log_pdp, np.log(b), np.log(f), l, sign_pdp)
-    print(true)
-    print(np.exp(logged))
     assert np.allclose(np.exp(logged), true)
 
 @pytest.mark.parametrize("X", [[5, 6, 7, 8]])
@@ -85,8 +79,6 @@ def test_log_xi_sum(X, lengths, model):
     true = xi_sum(np.exp(sparse_fs), model.transmat_, np.exp(sparse_bs), np.exp(sparse_os), lengths)
     sparse_fs = np.vstack((np.log(model.startprob_)+sparse_os[0], sparse_fs))
     logged = compute_log_xi_sum(sparse_fs, np.log(model.transmat_), sparse_bs, sparse_os, lengths)
-    print(true)
-    print(logged)
     assert np.allclose(true, np.exp(logged))
 
 @pytest.mark.parametrize("lengths", [[1]*4 + [5, 5]*3, [6, 4]*3 + [1]*4, [100]*10])
@@ -100,14 +92,14 @@ def test_xi_sum_full(model, dense_model, X, lengths):
     dense_xi = dense_log_xi_sum(dense_fs, np.log(dense_model.transmat_), dense_bs, dense_os)
     sparse_fs = model._do_forward_pass(sparse_os, lengths)[1]
     sparse_bs = model._do_backward_pass(sparse_os, lengths)
+
     sparse_fs = np.vstack((np.log(model.startprob_)+sparse_os[0], sparse_fs))
+
     sparse_xi = compute_log_xi_sum(sparse_fs, np.log(model.transmat_), sparse_bs, sparse_os, lengths)
     sparse_xi = np.exp(sparse_xi)
     dense_xi = np.exp(dense_xi)
     normalize(sparse_xi, axis=1)
     normalize(dense_xi, axis=1)
-    print(sparse_xi)
-    print(dense_xi)
     assert np.allclose(sparse_xi, dense_xi)
 
 @pytest.mark.parametrize("lengths", [[1]*4 + [4, 6]*3, [6, 4]*3 + [1]*4, [10]*10])
@@ -118,14 +110,8 @@ def test_fit(model, dense_model, X, lengths):
     dense_X = get_dense_X(X, lengths)
     dense_model.fit(dense_X)
     model.fit(X, lengths)
-    print(dense_model.transmat_)
-    print(model.transmat_)
     assert np.allclose(dense_model.transmat_, model.transmat_)
-    print(dense_model.startprob_)
-    print(model.startprob_)
     assert np.allclose(dense_model.startprob_, model.startprob_)
-    print(dense_model.rate_)
-    print(model.rate_)
     assert np.allclose(dense_model.rate_, model.rate_)
 
 

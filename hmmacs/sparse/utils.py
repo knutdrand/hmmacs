@@ -17,7 +17,7 @@ def log_eigvals(log_matrix, signs):
 
 def log_eig(log_matrix, signs):
     eigvals, eigsigns = log_eigvals(log_matrix, signs)
-    assert np.all(np.abs(eigsigns)==1), eigsigns
+    assert np.all(np.abs(eigsigns)==1), (eigsigns, np.exp(log_matrix)*signs, log_matrix, signs)
     p = np.zeros_like(log_matrix)
     p_signs = np.ones_like(log_matrix)
     ys, y_signs = logsumexp([log_matrix[0, 0]*np.ones_like(eigvals), eigvals], 
@@ -26,7 +26,7 @@ def log_eig(log_matrix, signs):
     p[1, :] = ys-log_matrix[0, 1]
     p_signs[1, :] = signs[0, 1]*y_signs
     det, s_det = log_det(p, p_signs)
-    return (eigvals, eigsigns), (p-det, p_signs*s_det)
+    return (eigvals, eigsigns), (p-0.5*det, s_det*p_signs)
 
 def log_det(p, p_signs):
     return logsumexp([p[0, 0]+p[1, 1], p[1, 0]+p[0, 1]],
@@ -43,5 +43,7 @@ def log_inv(log_matrix, signs):
     
 def log_diagonalize(log_matrix, signs=np.ones((2, 2))):
     (leig, seig), (lp, sp) =  log_eig(log_matrix, signs)
+    assert np.allclose(log_det(lp, sp)[0], 0), (lp, sp, log_matrix, log_det(lp, sp)[0])
     lr, sr = log_inv(lp, sp)
+
     return (lp, sp), (leig, seig), (lr, sr)

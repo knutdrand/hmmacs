@@ -59,13 +59,11 @@ class PoissonHMM(_BaseSparseHMM):
             stats, X, framelogprob, posteriors, fwdlattice, bwdlattice, rls)
         if 'r' in self.params:
             inv_mat, s_inv_mat = log_inv(np.log(self.transmat_)+ framelogprob[0][None, :], np.sign(self.transmat_))
-            first_f, sf = log_mat_mul((np.log(self.startprob_) + framelogprob[0]).reshape((1, -1)), inv_mat, np.ones((1, 2)), s_inv_mat)                
+            first_f, sf = log_mat_mul((np.log(self.startprob_) + framelogprob[0]).reshape((1, -1)), inv_mat, np.ones((1, 2)), s_inv_mat)
             fwdlattice = np.vstack((first_f, fwdlattice))
             logprob = logsumexp(fwdlattice[-1].flatten())
             posterior_sums = np.exp(np.array([log_posterior_sum(f, np.log(self.transmat_), b, o, int(l), logprob)
                                               for f, b, o, l in zip(fwdlattice, bwdlattice, framelogprob, rls)]))
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print(np.sum(posterior_sums, axis=1))
             stats['counts'] += np.sum(X.reshape((-1, 1))*posterior_sums, axis=0)
             stats['posts'] += np.sum(posterior_sums, axis=0)
 

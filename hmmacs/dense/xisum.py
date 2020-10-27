@@ -19,11 +19,6 @@ def compute_log_xi_sum(fwdlattice, log_transmat, bwdlattice, framelogprob):
             for j in range(n_components):
                 log_xi_sum[i, j] = np.logaddexp(log_xi_sum[i, j],
                                                 work_buffer[i, j])
-        if t % 8 == 6:
-            if p is None:
-                print(log_xi_sum)
-            else:
-                print(logsumexp([log_xi_sum.flatten(), p.flatten()], b=[np.ones(4), -1*np.ones(4)], axis=0).reshape(2,2))
             p = log_xi_sum.copy()
     return log_xi_sum
 

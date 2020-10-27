@@ -112,14 +112,10 @@ class _BaseSparseHMM(_BaseHMM):
                 curr_logprob += logprob
                 bwdlattice = self._do_backward_pass(framelogprob, rls)
                 posteriors = self._compute_posteriors(fwdlattice, bwdlattice)
-                print(self._accumulate_sufficient_statistics)
                 self._accumulate_sufficient_statistics(
                     stats, X[i:j], framelogprob, posteriors, fwdlattice,
                     bwdlattice, rls)
             self._do_mstep(stats)
-            print(self.transmat_)
-            print(self.rate_)
-            print(self.startprob_)
             self.monitor_.report(curr_logprob)
             if self.monitor_.converged:
                 break
