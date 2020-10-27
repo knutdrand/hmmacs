@@ -2,6 +2,7 @@ import numpy as np
 from numpy.linalg import matrix_power as mpow
 from scipy.special import logsumexp
 from itertools import product
+from .utils import log_diagonalize
 
 def diagonalize(matrices):
     l, p = np.linalg.eig(matrices)
@@ -100,18 +101,16 @@ def log_sum_range(pdp, b, f, l, sign_pdp):
 def compute_log_xi_sum(fs, T, bs, os, ls):
     ls = ls.copy()
     ls[0]-=1
-
-    matrices = np.exp(T)[None, ...] * np.exp(os)[:, None, : ]
-    pdps = diagonalize(matrices)
-    for i, ms in enumerate(zip(*pdps)):
-        for m in ms:
-            pass
-            # assert np.all(m != 0), (ms, np.exp(os[i]), np.exp(T))
-    ps, ds, rs = (np.log(np.abs(m)) for m in pdps)
-    sps, sds, srs = (np.sign(m) for m in pdps)
+    matrices = T[None, ...] + os[:, None, :]
+    diagonalized = [log_diagonalize(m) for m in matrices]
+    #matrices = np.exp(T)[None, ...] * np.exp(os)[:, None, : ]
+    #pdps = diagonalize(matrices)
+    #ps, ds, rs = (np.log(np.abs(m)) for m in pdps)
+    #sps, sds, srs = (np.sign(m) for m in pdps)
     logprob = logsumexp(fs[-1])
     local_sums = [T+o[None, :] + log_sum_range((p, d, r), b, f, l, (sp, sd, sr)).T-logprob
-                  for p, d, r, b, f, o, l, sp, sd, sr in zip(ps, ds, rs, bs, fs, os, ls, sps, sds, srs) if l>0]
+                  for ((p, sp), (d, sd), (r, sr)), b, f, o, l in zip(diagonalized, bs, fs, os, ls) if l>0]
+    #                   for p, d, r, b, f, o, l, sp, sd, sr in zip(ps, ds, rs, bs, fs, os, ls, sps, sds, srs) if l>0]
 
     return logsumexp(local_sums, axis=0)
 
