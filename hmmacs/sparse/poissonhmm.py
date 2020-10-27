@@ -1,7 +1,7 @@
 from scipy.special import logsumexp
 from scipy.stats import poisson 
 import numpy as np
-from .estimation import log_posterior_sum
+from .estimation import log_posterior_sum, log_mat_mul
 from .sparsebase import _BaseSparseHMM
 from sklearn.utils import check_random_state
 from sklearn import cluster
@@ -54,17 +54,12 @@ class PoissonHMM(_BaseSparseHMM):
 
     def _accumulate_sufficient_statistics(self, stats, X, framelogprob,
                                           posteriors, fwdlattice, bwdlattice, rls):
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         super()._accumulate_sufficient_statistics(
             stats, X, framelogprob, posteriors, fwdlattice, bwdlattice, rls)
         if 'r' in self.params:
-            try:
-                first_f = (self.startprob_*np.exp(framelogprob[0]).reshape((1, -1))) @ (np.linalg.inv(self.transmat_*np.exp(framelogprob[0][None, :])))
-            except:
-                
-                print(self.transmat_, framelogprob[0], self.transmat_*np.exp(framelogprob[0][None, :]))
-                raise
-            fwdlattice = np.vstack((np.log(first_f), fwdlattice))
+            inv_mat, s_inv_mat = log_inv(np.log(self.transmat_)+ framelogprob[0][None, :], np.sign(model.transmat_))
+            first_f, sf = log_mat_mul((np.log(self.startprob_) + framelogprob[0]).reshape((1, -1)), inv_mat, np.ones((1, 2)), s_inv_mat)                
+            fwdlattice = np.vstack((first_f, fwdlattice))
             logprob = logsumexp(fwdlattice[-1].flatten())
             posterior_sums = np.exp(np.array([log_posterior_sum(f, np.log(self.transmat_), b, o, int(l), logprob)
                                               for f, b, o, l in zip(fwdlattice, bwdlattice, framelogprob, rls)]))

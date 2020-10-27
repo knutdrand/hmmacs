@@ -41,25 +41,16 @@ class _BaseSparseHMM(_BaseHMM):
 
     def __get_lpdps(self, framelogprob):
         matrices = np.log(self.transmat_[None, ...]) + framelogprob[:, None, : ]
-        # matrices = self.transmat_[None, ...] * np.exp(framelogprob[:, None, : ]) #add f_i to row i of t
         return [log_diagonalize(m) for m in matrices]
-        
-        #lps, ilds, lp_invs = (np.log(np.abs(m)) for m in ms)
-        #sps, sds, sp_invs = (np.sign(m) for m in ms)
-        #return (lps, ilds, lp_invs), (sps, sds, sp_invs)
 
     def _do_backward_pass(self, framelogprob, run_lengths):
         n_samples, n_components = framelogprob.shape
         diagonalized = self.__get_lpdps(framelogprob)
-        #(lps, ilds, lp_invs), (sps, sds, sp_invs) = self.__get_lpdps(framelogprob)
-        # lds = ilds*lengths
         bwdlattice = np.zeros((n_samples, n_components))
         lv = bwdlattice[-1]
         for t in range(n_samples-1, 0, -1):
             (lp, sp), (ld, sd), (lr, sr) = diagonalized[t]
             ld *= run_lengths[t]
-            #lp, ld, lr = (lps[t], lds[t], lp_invs[t])
-            #sp, sd, sr = (sps[t], sds[t], sp_invs[t])
             for i in range(2):
                 bwdlattice[t-1, i] = logsumexp([lp[i, k]+ld[k]+lr[k, c]+lv[c] for k in range(2) for c in range(2)], 
                                              b=[sp[i, k]*sd[k]*sr[k, c] for k in range(2) for c in range(2)])
@@ -68,17 +59,12 @@ class _BaseSparseHMM(_BaseHMM):
 
     def _do_forward_pass(self, framelogprob, run_lengths):
         n_samples, n_components = framelogprob.shape
-        #(lps, ilds, lp_invs), (sps, sds, sp_invs) = self.__get_lpdps(framelogprob)
         diagonalized = self.__get_lpdps(framelogprob)
-        # lds = ilds*run_lengths
-        # lds[0] -= ilds[0]
         fwdlattice = np.zeros((n_samples, n_components))
         lv = log_mask_zero(self.startprob_)+framelogprob[0]
         for t in range(n_samples):
             (lp, sp), (ld, sd), (lr, sr) = diagonalized[t]
             ld *= run_lengths[t]-(t==0)
-            #lp, ld, lr = (lps[t], lds[t], lp_invs[t])
-            #sp, sd, sr = (sps[t], sds[t], sp_invs[t])
             for j in range(2):
                 fwdlattice[t, j] = logsumexp([lv[c] + lp[c, k]+ld[k]+lr[k, j] for k in range(2) for c in range(2)],
                                              b=[sp[c, k]*sd[k]*sr[k, j] for k in range(2) for c in range(2)])
