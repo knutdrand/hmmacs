@@ -2,6 +2,7 @@ from scipy.special import logsumexp
 from scipy.stats import poisson 
 import numpy as np
 from .estimation import log_posterior_sum, log_mat_mul
+from .utils import log_inv
 from .sparsebase import _BaseSparseHMM
 from sklearn.utils import check_random_state
 from sklearn import cluster
@@ -57,7 +58,7 @@ class PoissonHMM(_BaseSparseHMM):
         super()._accumulate_sufficient_statistics(
             stats, X, framelogprob, posteriors, fwdlattice, bwdlattice, rls)
         if 'r' in self.params:
-            inv_mat, s_inv_mat = log_inv(np.log(self.transmat_)+ framelogprob[0][None, :], np.sign(model.transmat_))
+            inv_mat, s_inv_mat = log_inv(np.log(self.transmat_)+ framelogprob[0][None, :], np.sign(self.transmat_))
             first_f, sf = log_mat_mul((np.log(self.startprob_) + framelogprob[0]).reshape((1, -1)), inv_mat, np.ones((1, 2)), s_inv_mat)                
             fwdlattice = np.vstack((first_f, fwdlattice))
             logprob = logsumexp(fwdlattice[-1].flatten())
