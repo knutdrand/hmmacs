@@ -31,9 +31,20 @@ class _BaseSparseHMM(_BaseHMM):
             logprob += logprobij
         return logprob
 
+    def _decode_viterbi(self, X, run_lengths):
+        framelogprob = self._compute_log_likelihood(X)
+        state_sequence, logprob = viterbi(log_mask_zero(self.startprob_),
+            log_mask_zero(self.transmat_), framelogprob, run_lengths)
+        return logprob, state_sequence
+
+
     def __get_lpdps(self, framelogprob):
         matrices = self.transmat_[None, ...] * np.exp(framelogprob[:, None, : ]) #add f_i to row i of t
         ms = diagonalize(matrices)
+        for i, tmp in enumerate(zip(*ms)):
+            for m in tmp:
+                pass
+                # assert np.all(m!=0), (tmp, framelogprob[i], self.transmat_, matrices[i])
         lps, ilds, lp_invs = (np.log(np.abs(m)) for m in ms)
         sps, sds, sp_invs = (np.sign(m) for m in ms)
         return (lps, ilds, lp_invs), (sps, sds, sp_invs)
@@ -53,10 +64,10 @@ class _BaseSparseHMM(_BaseHMM):
             lv = bwdlattice[t-1]
         return bwdlattice
 
-    def _do_forward_pass(self, framelogprob, lengths):
+    def _do_forward_pass(self, framelogprob, run_lengths):
         n_samples, n_components = framelogprob.shape
         (lps, ilds, lp_invs), (sps, sds, sp_invs) = self.__get_lpdps(framelogprob)
-        lds = ilds*lengths
+        lds = ilds*run_lengths
         lds[0] -= ilds[0]
         fwdlattice = np.zeros((n_samples, n_components))
         lv = log_mask_zero(self.startprob_)+framelogprob[0]
@@ -115,7 +126,9 @@ class _BaseSparseHMM(_BaseHMM):
                     stats, X[i:j], framelogprob, posteriors, fwdlattice,
                     bwdlattice, rls)
             self._do_mstep(stats)
-
+            print(self.transmat_)
+            print(self.rate_)
+            print(self.startprob_)
             self.monitor_.report(curr_logprob)
             if self.monitor_.converged:
                 break
@@ -125,3 +138,48 @@ class _BaseSparseHMM(_BaseHMM):
                          "transition from the state was ever observed.")
 
         return self
+
+    def decode(self, X, run_lengths, lengths=None, algorithm=None):
+        _utils.check_is_fitted(self, "startprob_")
+        self._check()
+
+        algorithm = algorithm or self.algorithm
+        if algorithm not in DECODER_ALGORITHMS:
+            raise ValueError("Unknown decoder {!r}".format(algorithm))
+
+        decoder = {
+            "viterbi": self._decode_viterbi,
+            "map": self._decode_map
+        }[algorithm]
+
+        X = check_array(X)
+        n_samples = X.shape[0]
+        logprob = 0
+        state_sequence = np.empty(n_samples, dtype=int)
+        for i, j in iter_from_X_lengths(X, lengths):
+            # XXX decoder works on a single sample at a time!
+            logprobij, state_sequenceij = decoder(X[i:j], run_lengths[i:j])
+            logprob += logprobij
+            state_sequence[i:j] = state_sequenceij
+
+        return logprob, state_sequence
+
+    def predict(self, X, run_lengths, lengths=None):
+        """Find most likely state sequence corresponding to ``X``.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Feature matrix of individual samples.
+
+        lengths : array-like of integers, shape (n_sequences, ), optional
+            Lengths of the individual sequences in ``X``. The sum of
+            these should be ``n_samples``.
+
+        Returns
+        -------
+        state_sequence : array, shape (n_samples, )
+            Labels for each sample from ``X``.
+        """
+        _, state_sequence = self.decode(X, run_lengths, lengths)
+        return state_sequence

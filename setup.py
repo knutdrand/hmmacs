@@ -35,6 +35,7 @@ setup(
     entry_points={
         'console_scripts': [
             'hmmacs=hmmacs.cli:main',
+            'hmmtools=hmmacs.cli:hmmtools',
         ],
     },
     install_requires=requirements,

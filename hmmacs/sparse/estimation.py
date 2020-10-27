@@ -21,14 +21,22 @@ def log_diagonal_sum(d, A, l, sd):
     """
     logsumexp_{0<=t<l}D^{l-t-1}AD^t
     """
+    assert np.all(~np.isnan(A)), A
+    assert np.all(~np.isnan(d)), d
     l = int(l)
     d1, d2 = d
     numerator, s = logsumexp([d1*l, d2*l], b=[sd[0], -sd[1]], return_sign=True)
     denomenator, s2 = logsumexp((d1, d2), b=[sd[0], -sd[1]], return_sign=True)
     assert s*s2==1, (s, s2, d, sd, l)
     dij = numerator-denomenator
-    return np.array([[np.log(l)+(l-1)*d1, dij],
-                     [dij, np.log(l)+d2*(l-1)]])+A
+    assert np.all(~np.isnan(dij)), dij
+    assert l >= 1
+    res = np.array([[np.log(l)+(l-1)*d1, dij],
+                    [dij, np.log(l)+d2*(l-1)]])+A
+    assert np.all(~np.isnan(res)), res
+    assert np.all(~np.isinf(res)), (res, A, d, l, sd)
+    return res
+                     
 
 
 def sum_range(pdp, b, f, l):
@@ -39,6 +47,8 @@ def sum_range(pdp, b, f, l):
     """
     b = b.reshape((2, 1))
     f = f.reshape((1, 2))
+    if l==0:
+        return b @ f
     p, d, r = pdp
     A = r @ b @ f @ p
     S = diagonal_sum(d, A, l)
@@ -75,15 +85,13 @@ def log_mat_mul(A, B, sA, sB):
     return res, sres
 
 def log_sum_range(pdp, b, f, l, sign_pdp):
+    assert l>0
     b = b.reshape((2, 1))
     f = f.reshape((1, 2))
     p, d, r = pdp
     sp, sd, sr = sign_pdp
-    # tmp_a, s_tmp_a = log_mat_mul(r, b, sr, np.ones_like(b))
-    # tmp_b, s_tmp_b = log_mat_mul(f, p, np.ones_like(f), sp)
     A, sA = log_matprod([r, b, f, p], [sr, np.ones_like(b), np.ones_like(f), sp])
-    # A, sA = log_mat_mul(tmp_a, tmp_b, s_tmp_a, s_tmp_b)
-    # assert np.allclose(A, Atmp), (A, Atmp, pdp, b,f,l)
+    assert np.all(~np.isinf(A)), (A, pdp, sign_pdp, b, f)
     S = log_diagonal_sum(d, A, l, sd)
     return log_matprod([p, S, r], [sp, sA, sr])[0]
     tmp_c, s_tmp_c = log_mat_mul(p, S, sp, sA)
@@ -95,6 +103,10 @@ def compute_log_xi_sum(fs, T, bs, os, ls):
 
     matrices = np.exp(T)[None, ...] * np.exp(os)[:, None, : ]
     pdps = diagonalize(matrices)
+    for i, ms in enumerate(zip(*pdps)):
+        for m in ms:
+            pass
+            # assert np.all(m != 0), (ms, np.exp(os[i]), np.exp(T))
     ps, ds, rs = (np.log(np.abs(m)) for m in pdps)
     sps, sds, srs = (np.sign(m) for m in pdps)
     logprob = logsumexp(fs[-1])

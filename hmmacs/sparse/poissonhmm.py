@@ -58,8 +58,12 @@ class PoissonHMM(_BaseSparseHMM):
         super()._accumulate_sufficient_statistics(
             stats, X, framelogprob, posteriors, fwdlattice, bwdlattice, rls)
         if 'r' in self.params:
-
-            first_f = (self.startprob_*np.exp(framelogprob[0]).reshape((1, -1))) @ (np.linalg.inv(self.transmat_*np.exp(framelogprob[0][None, :])))
+            try:
+                first_f = (self.startprob_*np.exp(framelogprob[0]).reshape((1, -1))) @ (np.linalg.inv(self.transmat_*np.exp(framelogprob[0][None, :])))
+            except:
+                
+                print(self.transmat_, framelogprob[0], self.transmat_*np.exp(framelogprob[0][None, :]))
+                raise
             fwdlattice = np.vstack((np.log(first_f), fwdlattice))
             logprob = logsumexp(fwdlattice[-1].flatten())
             posterior_sums = np.exp(np.array([log_posterior_sum(f, np.log(self.transmat_), b, o, int(l), logprob)
@@ -79,8 +83,16 @@ class PoissonHMM(_BaseSparseHMM):
         Check if ``X`` is a sample from a Poisson distribution, i.e. an
         array of non-negative integers.
         """
-        assert np.issubdtype(X.dtype, np.integer), X
+        # assert np.issubdtype(X.dtype, np.integer), X
         assert X.min() >= 0, X
         if hasattr(self, "n_features"):
             assert self.n_features == 1
         self.n_features = 1
+
+    def _do_viterbi_pass(self, framelogprob):
+        n_samples, n_components = framelogprob.shape
+        state_sequence, logprob = _hmmc._viterbi(
+            n_samples, n_components, log_mask_zero(self.startprob_),
+            log_mask_zero(self.transmat_), framelogprob)
+        return logprob, state_sequence
+
