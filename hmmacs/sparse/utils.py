@@ -1,4 +1,5 @@
 from scipy.special import logsumexp
+from itertools import product
 import numpy as np
 
 def diagonalize(matrices):
@@ -47,3 +48,26 @@ def log_diagonalize(log_matrix, signs=np.ones((2, 2))):
     lr, sr = log_inv(lp, sp)
 
     return (lp, sp), (leig, seig), (lr, sr)
+
+def log_matprod(matrices, signs):
+    for m, s in zip(matrices, signs):
+        assert m.shape == s.shape, (m, s)
+    shape = (matrices[0].shape[0], matrices[-1].shape[1])
+    res = np.zeros(shape)
+    out_signs = np.zeros(shape)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            tuples = [[i] + list(tup) + [j] for tup in  product(*(range(m.shape[1]) for m in matrices[:-1]))]
+            res[i, j], out_signs[i, j] = logsumexp([np.sum([matrices[t][i_tup[t], i_tup[t+1]] for t in range(len(matrices))]) for i_tup in tuples],
+                                  b = [np.prod([signs[t][i_tup[t], i_tup[t+1]] for t in range(len(matrices))]) for i_tup in tuples], return_sign=True)
+    return res, out_signs
+
+
+def log_mat_mul(A, B, sA, sB):
+    res = np.empty((A.shape[0], B.shape[1]))
+    sres = np.empty((A.shape[0], B.shape[1]))
+    for i in range(res.shape[0]):
+        for j in range(res.shape[1]):
+            res[i, j], sres[i, j] = logsumexp([A[i, k]+B[k, j] for k in range(A.shape[1])],
+                                              b=[sA[i, k]*sB[k, j] for k in range(A.shape[1])], return_sign=True)
+    return res, sres

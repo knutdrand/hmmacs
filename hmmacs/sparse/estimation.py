@@ -2,7 +2,7 @@ import numpy as np
 from numpy.linalg import matrix_power as mpow
 from scipy.special import logsumexp
 from itertools import product
-from .utils import log_diagonalize
+from .utils import log_diagonalize, log_matprod, log_mat_mul
 
 def diagonalize(matrices):
     l, p = np.linalg.eig(matrices)
@@ -62,27 +62,6 @@ def matprod(matrices):
             tuples = [[i] + list(tup) + [j] for tup in  product(*(range(m.shape[1]) for m in matrices[:-1]))]
             res[i, j] = sum(np.prod([matrices[t][i_tup[t], i_tup[t+1]] for t in range(len(matrices))]) for i_tup in tuples)
     return res
-
-def log_matprod(matrices, signs):
-    shape = (matrices[0].shape[0], matrices[-1].shape[1])
-    res = np.zeros(shape)
-    out_signs = np.zeros(shape)
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-            tuples = [[i] + list(tup) + [j] for tup in  product(*(range(m.shape[1]) for m in matrices[:-1]))]
-            res[i, j], out_signs[i, j] = logsumexp([np.sum([matrices[t][i_tup[t], i_tup[t+1]] for t in range(len(matrices))]) for i_tup in tuples],
-                                  b = [np.prod([signs[t][i_tup[t], i_tup[t+1]] for t in range(len(matrices))]) for i_tup in tuples], return_sign=True)
-    return res, out_signs
-
-
-def log_mat_mul(A, B, sA, sB):
-    res = np.empty((A.shape[0], B.shape[1]))
-    sres = np.empty((A.shape[0], B.shape[1]))
-    for i in range(res.shape[0]):
-        for j in range(res.shape[1]):
-            res[i, j], sres[i, j] = logsumexp([A[i, k]+B[k, j] for k in range(A.shape[1])],
-                                              b=[sA[i, k]*sB[k, j] for k in range(A.shape[1])], return_sign=True)
-    return res, sres
 
 def log_sum_range(pdp, b, f, l, sign_pdp):
     assert l>0
