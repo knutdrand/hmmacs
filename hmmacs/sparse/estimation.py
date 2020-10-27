@@ -158,12 +158,13 @@ def posterior_sum(f, T, b, o, l, prob=1):
     return res
 
 def log_posterior_sum(f, T, b, o, l, logprob=0):
-    M = np.exp(T+o[None, :])
-    f = log_mat_mul(f.reshape((1, -1)), np.log(M), np.ones((1,2)), np.ones_like(M))[0].flatten() # Get first f of range
-    pdp = diagonalize(M)
-    lpdp = (np.log(np.abs(m)) for m in pdp)
-    spdp = (np.sign(m) for m in pdp)
-    return log_sum_range(lpdp, b, f, l, spdp).diagonal()-logprob
+    M = T+o[None, :]
+    f = log_mat_mul(f.reshape((1, -1)), M, np.ones((1,2)), np.ones_like(M))[0].flatten() # Get first f of range
+    (p, sp), (d, sd), (r, sr) = log_diagonalize(M)
+    #pdp = diagonalize(M)
+    #lpdp = (np.log(np.abs(m)) for m in pdp)
+    #spdp = (np.sign(m) for m in pdp)
+    return log_sum_range((p, d, r), b, f, l, (sp, sd, sr)).diagonal()-logprob
 
 def verbose_log_posterior_sum(f, T, b, o, l, logprob=1):
     f = f.flatten()
