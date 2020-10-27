@@ -39,7 +39,6 @@ def log_diagonal_sum(d, A, l, sd):
     return res
                      
 
-
 def sum_range(pdp, b, f, l):
     """
     TO = PDP^{-1}

@@ -17,7 +17,7 @@ def log_eigvals(log_matrix, signs):
 
 def log_eig(log_matrix, signs):
     eigvals, eigsigns = log_eigvals(log_matrix, signs)
-    assert np.all(np.abs(eigsigns)==1), (eigsigns, np.exp(log_matrix)*signs, log_matrix, signs)
+    assert np.all(np.abs(eigsigns)==1), (eigsigns, np.exp(log_matrix)*signs, log_matrix, signs, eigvals)
     p = np.zeros_like(log_matrix)
     p_signs = np.ones_like(log_matrix)
     ys, y_signs = logsumexp([log_matrix[0, 0]*np.ones_like(eigvals), eigvals], 

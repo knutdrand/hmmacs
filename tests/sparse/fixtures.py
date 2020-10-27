@@ -30,5 +30,14 @@ def X():
 def lengths():
     return np.array([1, 1,1,1] + [4, 6]*3, dtype="int").reshape((-1, 1))
 
+@pytest.fixture
+def f():
+    return np.array([[0.5, 1.5]])
+
+@pytest.fixture
+def b():
+    return np.array([[0.7],
+                     [0.9]])
+
 def get_dense_X(X, lengths):
     return np.concatenate([[x]*l for x, l in zip(X.flatten(), lengths.flatten())]).reshape((-1, 1))
